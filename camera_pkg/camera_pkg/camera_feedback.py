@@ -122,8 +122,8 @@ def main():
     try:
 
         # 在程式啟動時，只發布一次雷射測距控制命令 (此處 1 表示開啟)**
-        laser_cmd_bytes = cm.Command.laser_command(1)
-        s.send(laser_cmd_bytes)
+        laser_cmd = cm.Command.Laser_command(1)
+        s.send(laser_cmd)
         print("開啟雷射 - Wait 1 sec")
         time.sleep(1)
         

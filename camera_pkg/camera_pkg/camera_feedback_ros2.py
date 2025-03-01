@@ -139,7 +139,7 @@ def main():
     try:
         
         # 打開雷射測距
-        laser_cmd = cm.Command.laser_command(1)
+        laser_cmd = cm.Command.Laser_command(1)
         s.send(laser_cmd)
         print("開啟雷射 - Wait 1 sec")
         time.sleep(1)
