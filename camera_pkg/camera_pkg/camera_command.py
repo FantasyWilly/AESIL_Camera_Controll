@@ -6,7 +6,7 @@
 File   : camera_command.py
 
 author : LYX(先驅), FantasyWilly
-email  : bc697522h04@gmail.com
+email  : FantasyWilly - bc697522h04@gmail.com
 
 '''
 

@@ -3,7 +3,7 @@
 
 '''
 
-File   : camera_feedback.py
+File   : camera_feedback_ros2.py
 
 author : LYX(先驅), FantasyWilly
 email  : FantasyWilly - bc697522h04@gmail.com
@@ -15,6 +15,7 @@ email  : FantasyWilly - bc697522h04@gmail.com
 檔案大綱 :
     1. 接收 - 相機＆雲台回傳
     2. 打開 - 雷射測距
+    3. 發布 - 回傳資訊至ROS2
 
 '''
 
@@ -22,7 +23,13 @@ import socket
 import time
 import numpy as np
 
+import rclpy
+from rclpy.node import Node
+from camera_msg_pkg import Camera, CameraData
+
 import camera_command as cm
+
+# ----------------------- 基本參數設定 -----------------------
 
 # 定義 控制 IP 與 Port
 DEVICE_IP = "192.168.144.200"
@@ -32,7 +39,7 @@ DEVICE_PORT = 2000
 rec_cmd = [0x4B, 0x4B, 0x01, 0x97]    # 回傳 'Data' 命令控制
 buffer_size = 32                      # 接收 'Data' 位元長度
 
-# 回傳訊息資料格式
+# ---------------------- 回傳訊息資料格式 ---------------------
 class ReceiveMsg:
     def __init__(self):
         self.zAngle = 0.0         # Z軸轉動角
@@ -52,7 +59,7 @@ class ReceiveMsg:
         if length<30 or not buffer:
             return False
         
-        #print("Received data:",buffer)
+        # print("Received data:",buffer)
 
         try:
 
@@ -109,21 +116,31 @@ class ReceiveMsg:
                 # 回傳封包
                 yield packet
 
-# ------------------------------------------------主要執行序-------------------------------------------------------------------
-    
-# 定義 ReceiveMsg 的 Class
-msg = ReceiveMsg()
+# ---------------------- ROS2 Node 定義 ----------------------
+class CameraFeedbackPublisher(Node):
+    def __init__(self):
+        super().__init__('camera_feedback_publisher_node')
+        self.publisher_ = self.create_publisher(Camera, '/camera_data_pub', 10)
 
-# 定義 連線
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Create TCP socket
-s.connect((DEVICE_IP, DEVICE_PORT))                        # Connect to device
-
+# ------------------------ 主要執行序 -------------------------
 def main():
-    try:
 
-        # 在程式啟動時，只發布一次雷射測距控制命令 (此處 1 表示開啟)**
-        laser_cmd_bytes = cm.Command.laser_command(1)
-        s.send(laser_cmd_bytes)
+    # 出始化 ROS2 系統並建立 Node
+    rclpy.init()
+    node = CameraFeedbackPublisher()
+
+    # 建立 ReceiveMsg 物件
+    msg = ReceiveMsg()
+
+    # 建立 TCP socket 並連線設備
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Create TCP socket
+    s.connect((DEVICE_IP, DEVICE_PORT))                        # Connect to device
+
+    try:
+        
+        # 打開雷射測距
+        laser_cmd = cm.Command.laser_command(1)
+        s.send(laser_cmd)
         print("開啟雷射 - Wait 1 sec")
         time.sleep(1)
         
@@ -132,6 +149,25 @@ def main():
             if msg.parse(packet, len(packet), msg):
                 print(f"roll:{msg.rollAngle}, yaw:{msg.yawAngle}, pitch:{msg.pitchAngle}")
                 print(f"測距: {msg.targetDist}")
+
+                # 建立 CameraData 訊息並填入解析數值
+                data_msg = CameraData()
+                data_msg.rollangle = float(msg.rollAngle)
+                data_msg.yawangle = float(msg.yawAngle)
+                data_msg.pitchangle = float(msg.pitchAngle)
+                data_msg.targetdist = float(msg.targetDist)
+
+                # 建立 Camera 訊息，並將 data_msg 放入 data 陣列中
+                camera_msg = Camera()
+                camera_msg.data = [data_msg]
+
+                # 發布 Camera 訊息至 ROS2 主題
+                node.publisher_.publish(camera_msg)
+                node.get_logger().info(
+                    f"發布ROS2 Camera 資料: roll={data_msg.rollangle}, yaw={data_msg.yawangle},pitch={data_msg.pitchangle} "
+                    f"targetdist={data_msg.targetdist}"
+                )
+
             else:
                 print("Can't Received The Data")
 
