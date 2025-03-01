@@ -5,16 +5,17 @@
 
 File   : camera_feedback.py
 
-author : FantasyWilly
+author : LYX(先驅), FantasyWilly
 email  : bc697522h04@gmail.com
 
 '''
 
 '''
 
-1. 接收 - 相機＆雲台回傳
-2. 打開 - 雷射測距
-3. 發布 - 資訊至 ROS2
+檔案大綱 :
+    1. 接收 - 相機＆雲台回傳
+    2. 打開 - 雷射測距
+    3. 發布 - 回傳資訊至 ROS2
 
 '''
 
@@ -22,11 +23,15 @@ import socket
 import time
 import numpy as np
 
-# Device IP address and port
+import camera_command as cm
+
+# 定義 控制 IP 與 Port
 DEVICE_IP = "192.168.144.200"
 DEVICE_PORT = 2000
+
+# 定義回傳命令 & 格式
 rec_cmd = [0x4B, 0x4B, 0x01, 0x97]    # 回傳 'Data' 命令控制
-buffer_size = 32                  # 接收 'Data' 位元長度
+buffer_size = 32                      # 接收 'Data' 位元長度
 
 # 回傳訊息資料格式
 class ReceiveMsg:
@@ -68,46 +73,47 @@ class ReceiveMsg:
         except Exception as e:
             print("Error parsing data" ,e)
             return False
-    # 效驗碼
-    def calculate(self,buffer: list, length: int) -> bytes:
-        crc_tmp = 0x0000
-        for i in range(length):
-            crc_tmp += buffer[i]
-        return crc_tmp.to_bytes(1, byteorder='little')
-    
-# 命令控制
-class Command:
-    def laser_command(start):#laser(0) 關閉雷射測距 laser(1) 開啟雷射測距
-        my_bytes = bytearray(b'\xeb\x90\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x88\x0f\x21')
         
-        my_bytes += bytes([start, 0, 0, 0, 0, 0])        
+    def recv_packets(sock, packet_size=32, header=b'\x4B\x4B'):
 
-        crc = CrcTmp.calc(my_bytes)
-        my_bytes += crc.to_bytes(2, 'little')
-        
-        return my_bytes
-    
-# 校驗碼
-class CrcTmp:
-    def calc(data):
-        crc_table = [0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401, 0xA001, 0x6C00, 0x7800, 0xB401, 0x5000,
-                    0x9C01, 0x8801, 0x4400]
+        # 建立緩衝區
+        buffer = bytearray()
 
-        len = 22
-        crcTmp = 0xFFFF
-        while (len > 0):
-            len = len - 1
-            tmp = crc_table[(data[22 - len - 1] ^ crcTmp) & 15] ^ (crcTmp >> 4)
-            crcTmp = crc_table[((data[22 - len - 1] >> 4) ^ tmp) & 15] ^ (tmp >> 4)
+        # 接收字元 並加入緩衝區
+        while True:                         
+            data = sock.recv(1024)
+            if not data:
+                break 
+            buffer.extend(data)
 
-        return crcTmp
+            # 找尋頭幀 (0x4B, 0x4B)
+            while len(buffer) >= packet_size:
+                start_idx = buffer.find(header)
+                if start_idx == -1:
+                    buffer = bytearray()
+                    break
+
+                # 如果包頭不在緩衝區最前面，捨棄前面的數據
+                if start_idx > 0:
+                    del buffer[:start_idx]
+
+                # 確認緩衝區中是否有足夠的數據組成一個完整封包
+                if len(buffer) < packet_size:
+                    break
+
+                # 提取出完整的封包
+                packet = buffer[:packet_size]
+
+                # 從緩衝區中刪除已處理的封包數據
+                del buffer[:packet_size]
+
+                # 回傳封包
+                yield packet
 
 # ------------------------------------------------主要執行序-------------------------------------------------------------------
     
-# 定義 Class
+# 定義 ReceiveMsg 的 Class
 msg = ReceiveMsg()
-cmd = Command()
-crc = CrcTmp()
 
 # 定義 連線
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Create TCP socket
@@ -117,30 +123,28 @@ def main():
     try:
 
         # 在程式啟動時，只發布一次雷射測距控制命令 (此處 1 表示開啟)**
-        laser_cmd_bytes = Command.laser_command(1)
+        laser_cmd_bytes = cm.Command.laser_command(1)
         s.send(laser_cmd_bytes)
-        print("雷射測距命令已發布 (開啟雷射)")
-
-        # 循環發布'回傳'命令 - 
-        while True:
-            s.send(bytearray(rec_cmd))    # **送出命令**
-            buffer = s.recv(buffer_size)  # **接收回應資料**
-
-            if msg.parse(buffer, len(buffer), msg):
+        print("開啟雷射 - Wait 1 sec")
+        time.sleep(1)
+        
+        # 循環讀取並解析封包
+        for packet in ReceiveMsg.recv_packets(s, packet_size=32, header=b'\x4B\x4B'):
+            if msg.parse(packet, len(packet), msg):
                 print(f"roll:{msg.rollAngle}, yaw:{msg.yawAngle}, pitch:{msg.pitchAngle}")
                 print(f"測距: {msg.targetDist}")
             else:
                 print("Can't Received The Data")
 
-            # 10Hz 傳送命令
-            time.sleep(0.1)
+            time.sleep(0.1) # 10Hz
             
     except KeyboardInterrupt:
         print("使用者中斷程式執行")
     except Exception as e:
         print("發生例外:", e)
     finally:
-        s.close()  # **確保在任何情況下都會關閉 socket**
+        s.close()
 
 if __name__ == "__main__":
     main()
+    
