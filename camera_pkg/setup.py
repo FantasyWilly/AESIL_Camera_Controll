@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'camera_feedback_publisher_node = camera_pkg.camera_feedback_ros2:main'
         ],
     },
 )

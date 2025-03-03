@@ -18,6 +18,8 @@ email  : FantasyWilly - bc697522h04@gmail.com
     2. 命令程式控制
 
 '''
+import time
+import socket_communication as s_comm
 
 # ------------------------------------- 固定程式 --------------------------------------------- 
 
@@ -61,7 +63,7 @@ class Command:
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
-        send_bytes = send_bytes + b'\x01'
+        send_bytes = send_bytes + (b'\x01')
 
         x_offset_bytes = x_offset.to_bytes(2, byteorder='little', signed=True)
         y_offset_bytes = y_offset.to_bytes(2, byteorder='little', signed=True)
@@ -73,6 +75,8 @@ class Command:
         
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)
         
         return send_bytes
 
@@ -86,7 +90,9 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)    
 
         return send_bytes
 
@@ -100,7 +106,9 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)       
 
         return send_bytes
     
@@ -117,8 +125,9 @@ class Command:
 
         send_bytes = send_bytes + b'\x04'
 
-        yaw_speed_bytes     = yaw_speed     * (100).to_bytes(2, byteorder='little', signed=True)
-        pitch_speed_bytes   = pitch_speed   * (100).to_bytes(2, byteorder='little', signed=True)
+        yaw_speed_bytes = int(yaw_speed * 100).to_bytes(2, byteorder='little', signed=True)
+
+        pitch_speed_bytes = int(pitch_speed * 100).to_bytes(2, byteorder='little', signed=True)
 
         send_bytes += yaw_speed_bytes
         send_bytes += pitch_speed_bytes
@@ -127,6 +136,8 @@ class Command:
         
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)
         
         return send_bytes
     
@@ -163,6 +174,8 @@ class Command:
         
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)
         
         return send_bytes
     
@@ -176,7 +189,9 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)       
 
         return send_bytes
     
@@ -190,7 +205,9 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)       
 
         return send_bytes
     
@@ -208,7 +225,7 @@ class Command:
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
-        send_bytes = send_bytes + (b'\x011')
+        send_bytes = send_bytes + (b'\x10')
 
         send_bytes += photo_mode.to_bytes(2, 'little')
         send_bytes += parameters.to_bytes(2, 'little')
@@ -216,7 +233,9 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)       
 
         return send_bytes
     
@@ -231,14 +250,16 @@ class Command:
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
-        send_bytes = send_bytes + (b'\x011')
+        send_bytes = send_bytes + (b'\x11')
 
         send_bytes += start_or_stop.to_bytes(2, 'little')
 
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)       
 
         return send_bytes
     
@@ -257,7 +278,7 @@ class Command:
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes += VISIBLE_LIGHT
         
-        send_bytes += b'\x12'
+        send_bytes += (b'\x12')
         
         zoom_code_byte = zoom_code.to_bytes(1, byteorder='little', signed=False)
         send_bytes += zoom_code_byte
@@ -266,6 +287,8 @@ class Command:
         
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)
         
         return send_bytes
     
@@ -282,7 +305,7 @@ class Command:
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes += VISIBLE_LIGHT
         
-        send_bytes += b'\x13'
+        send_bytes += (b'\x13')
         
         focus_code_byte = focus_code.to_bytes(1, byteorder='little', signed=False)
         send_bytes += focus_code_byte
@@ -291,6 +314,8 @@ class Command:
         
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)
         
         return send_bytes
     
@@ -305,7 +330,7 @@ class Command:
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes += VISIBLE_LIGHT
         
-        send_bytes += b'\x14'
+        send_bytes += (b'\x14')
         
         center_x_bytes = center_x.to_bytes(2, byteorder='little', signed=False)
         center_y_bytes = center_y.to_bytes(2, byteorder='little', signed=False)
@@ -322,6 +347,8 @@ class Command:
         
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)
         
         return send_bytes
 
@@ -343,14 +370,17 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')       
+        send_bytes += crc.to_bytes(2, 'little')
+
+        s_comm.send_command(send_bytes)       
 
         return send_bytes
     
 # -------------------- 主要執行序(調適用) ----------------------------
     
 def main():
-    Command.Netural_command()
+    # Command.Netural_command()
+    Command.GimbalControl_command(20,0)
 
 if __name__ == "__main__":
     main()

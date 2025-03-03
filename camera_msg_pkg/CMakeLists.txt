@@ -11,19 +11,15 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-#-----------------添加內容--------------------
-
 set(msg_files
-  "msg/Camera.msg"
-  "msg/CameraData.msg"
+"msg/Camera.msg"
+"msg/CameraData.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
   DEPENDENCIES std_msgs geometry_msgs
 )
- 
-#-------------------------------------------
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

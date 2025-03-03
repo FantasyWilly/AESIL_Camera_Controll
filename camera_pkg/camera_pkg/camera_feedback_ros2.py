@@ -25,9 +25,7 @@ import numpy as np
 
 import rclpy
 from rclpy.node import Node
-from camera_msg_pkg import Camera, CameraData
-
-import camera_command as cm
+from camera_msg_pkg.msg import Camera, CameraData
 
 # ----------------------- 基本參數設定 -----------------------
 
@@ -46,20 +44,16 @@ class ReceiveMsg:
         self.pitchAngle = 0.0     # 俯仰角
         self.rollAngle = 0.0      # 滾動角
         self.yawAngle = 0.0       # 航向角
-        self.isRanged = False     # 測距結果
         self.targetDist = 0.0     # 目標距離 (單位：M)
         self.targetAtt = 0.0      # 目標相對高度 (單位：M)
         self.targetLng = 0.0      # 目標經度
         self.targetLat = 0.0      # 目標緯度
-        self.gimbalBit = False    # 雲台開機自檢
         self.eoZoom = 0.0         # 可見光放大倍數
 
     # 解析 'KTG-TT30' Data
     def parse(self, buffer, length, out):
         if length<30 or not buffer:
             return False
-        
-        # print("Received data:",buffer)
 
         try:
 
@@ -139,7 +133,12 @@ def main():
     try:
         
         # 打開雷射測距
-        laser_cmd = cm.Command.Laser_command(1)
+        laser_cmd = (
+            b'\x4b\x4b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x88'  # 固定頭幀
+            b'\x01'                                                         # 可見光模式
+            b'\x21\x01\x00\x00\x00\x00\x00\x00'                             # CMD 指令部分
+            b'\x81\x01'                                                     # CRC 校驗碼
+        )
         s.send(laser_cmd)
         print("開啟雷射 - Wait 1 sec")
         time.sleep(1)
@@ -147,8 +146,8 @@ def main():
         # 循環讀取並解析封包
         for packet in ReceiveMsg.recv_packets(s, packet_size=32, header=b'\x4B\x4B'):
             if msg.parse(packet, len(packet), msg):
-                print(f"roll:{msg.rollAngle}, yaw:{msg.yawAngle}, pitch:{msg.pitchAngle}")
-                print(f"測距: {msg.targetDist}")
+                # print(f"roll:{msg.rollAngle}, yaw:{msg.yawAngle}, pitch:{msg.pitchAngle}")
+                # print(f"測距: {msg.targetDist}")
 
                 # 建立 CameraData 訊息並填入解析數值
                 data_msg = CameraData()
@@ -174,7 +173,7 @@ def main():
             time.sleep(0.1) # 10Hz
             
     except KeyboardInterrupt:
-        print("使用者中斷程式執行")
+        print("\n!!使用者中斷程式執行!!")
     except Exception as e:
         print("發生例外:", e)
     finally:
