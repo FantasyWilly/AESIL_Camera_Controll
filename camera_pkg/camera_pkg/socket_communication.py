@@ -22,19 +22,15 @@ def send_command(cmd_bytes):
     :param cmd_bytes: 位元組格式的命令
     """
     try:
-        # **建立 TCP socket**
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # **連線至相機**
         s.connect((TCP_IP, TCP_PORT))
-        # **發送命令**
         s.send(cmd_bytes)
-        print(cmd_bytes.hex())
         print("發送成功")
     except socket.error as e:
         print("發送失敗")
         print("錯誤訊息:", e)
     finally:
-        s.close()  # **關閉 socket 連線**
+        s.close()
 
 class ReceiveMsg:
     """
