@@ -23,10 +23,11 @@ import math
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
 from camera_msg_pkg.msg import Camera
 from sensor_msgs.msg import NavSatFix
-from std_msgs.msg import Float32
+from std_msgs.msg import Float64
 
 # ----------------------- 基本參數設定 -----------------------
 
@@ -55,27 +56,33 @@ def destination_point(lat, lon, bearing, distance):
 class TargetPositionNode(Node):
     def __init__(self):
         super().__init__('target_position_node')
+
+        qos=QoSProfile(
+			reliability=ReliabilityPolicy(0),
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_ALL,
+        )
         
         # 訂閱雲台資料(camera_data_pub)
         self.create_subscription(
             Camera,
             '/camera_data_pub',
             self.camera_callback,
-            10)
+            qos_profile=qos)
         
         # 訂閱 UAV 的 GPS 資料 (NavSatFix)，包含經緯度與海拔高度
         self.create_subscription(
             NavSatFix,
             '/mavros/global_position/raw/fix',
             self.gps_callback,
-            10)
+            qos_profile=qos)
         
         # 訂閱 UAV 的方位角資料 (Heading)
         self.create_subscription(
-            Float32,
+            Float64,
             '/mavros/global_position/compass_hdg',
             self.heading_callback,
-            10)
+            qos_profile=qos)
         
         # 用來存放最新接收到的 UAV GPS 與 Heading 資料
         self.uav_lat = None      # 飛機當前緯度
@@ -92,7 +99,7 @@ class TargetPositionNode(Node):
         self.get_logger().info(f'[GPS] lat: {self.uav_lat}, lon: {self.uav_lon}, alt: {self.uav_alt}')
     
     # ** Heading 訊息的 callback 函數 **
-    def heading_callback(self, msg: Float32):
+    def heading_callback(self, msg: Float64):
         # ** 儲存最新的飛機方位角 **
         self.uav_heading = msg.data  # ** 飛機方位角（單位：度） **
         self.get_logger().info(f'[Heading] {self.uav_heading} 度')
