@@ -152,8 +152,8 @@ class TargetPositionNode(Node):
         
         # ** 利用 UAV 的經緯度、水平距離與方位角，透過球面坐標公式計算目標物的經緯度 **
         target_lat, target_lon = destination_point(self.uav_lat, self.uav_lon, total_bearing, horizontal_distance)
-        self.get_logger().info(f'[結果] 目標緯度: {target_lat:.6f}, 目標經度: {target_lon:.6f}')
-        self.get_logger().info(f'[結果] UAV 相對高度: {abs(self.uav_rel_alt):.2f} 公尺')
+        self.get_logger().info(f'[結果] 目標緯度: {target_lat:.7f}, 目標經度: {target_lon:.7f}')
+        self.get_logger().info(f'[結果] UAV 相對高度: {abs(self.uav_rel_alt):.1f} 公尺')
         
         # ** 建立並填充 NavSatFix 訊息，用於發布目標的經緯度資訊 **
         target_msg = NavSatFix()
