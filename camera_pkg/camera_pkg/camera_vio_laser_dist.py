@@ -75,16 +75,16 @@ class TargetPositionNode(Node):
         # 訂閱 UAV - Position [接收] - UAV 局部座標 (x, y, z)
         self.create_subscription(
             PoseStamped,
-            '/mavros/vision_pos/pose',
+            '/mavros/vision_pose/pose',
             self.pose_callback,
             qos_profile=qos)
 
         # 訂閱 UAV - Heading  [接收] - UAV 轉向角
-        self.create_subscription(
-            Float64,
-            '/mavros/global_position/compass_hdg',
-            self.heading_callback,
-            qos_profile=qos)
+        # self.create_subscription(
+        #     Float64,
+        #     '/mavros/global_position/compass_hdg',
+        #     self.heading_callback,
+        #     qos_profile=qos)
 
         # UAV 的全域經緯度 - 定義初始值
         self.uav_lat = self.initial_lat
@@ -120,9 +120,9 @@ class TargetPositionNode(Node):
         self.get_logger().info(f'[GPS計算] 當前緯度: {self.uav_lat:.7f}, 當前經度: {self.uav_lon:.7f}')
 
     # Heading
-    def heading_callback(self, msg: Float64):
-        self.uav_heading = msg.data
-        self.get_logger().info(f'[Heading] 當前航向: {self.uav_heading} 度')
+    # def heading_callback(self, msg: Float64):
+    #     self.uav_heading = msg.data
+    #     self.get_logger().info(f'[Heading] 當前航向: {self.uav_heading} 度')
 
     # ------------------------ 計算目標物 經緯度函數 ---------------------------------
     def camera_callback(self, msg: Camera):
@@ -137,7 +137,7 @@ class TargetPositionNode(Node):
         gimbal_yaw = camera_data.yawangle             # 雲台的 yaw 角度（度）
         
         # 檢查是否已接收到 UAV - uav_lat, uav_lon, rel_alt, Heading
-        if self.uav_lat is None or self.uav_lon is None or self.uav_heading is None:
+        if self.uav_lat is None or self.uav_lon is None  is None:
             self.get_logger().warning('等待 UAV 的初始資料...')
             return
         
