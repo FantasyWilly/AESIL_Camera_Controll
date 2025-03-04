@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 File   : camera_command.py
 Author : LYX(先驅), FantasyWilly
@@ -9,8 +10,10 @@ Email  : FantasyWilly - bc697522h04@gmail.com
 檔案大綱 : 創建簡單 GUI 界面，用於發送相機控制指令
 """
 
+import time
 import tkinter as tk
-import camera_command as cm  # 請確認此模組路徑正確
+
+import camera_pkg.camera_command as cm
 
 class CameraControlGUI:
     def __init__(self, master):
@@ -79,9 +82,13 @@ class CameraControlGUI:
         btn_reset = tk.Button(group4_buttons, text="恢復1倍", command=self.on_zoom_reset)
         btn_zoom_in = tk.Button(group4_buttons, text="放大2倍", command=self.on_zoom_in)
         btn_zoom_out = tk.Button(group4_buttons, text="縮小2倍", command=self.on_zoom_out)
+        btn_zoom_keepin = tk.Button(group4_buttons, text="持續放大", command=self.on_zoom_keepin)
+        btn_zoom_keepout = tk.Button(group4_buttons, text="持續縮小", command=self.on_zoom_keepout)
         btn_reset.pack(side='left', padx=5, pady=5, expand=True, fill='x')
         btn_zoom_in.pack(side='left', padx=5, pady=5, expand=True, fill='x')
         btn_zoom_out.pack(side='left', padx=5, pady=5, expand=True, fill='x')
+        btn_zoom_keepin.pack(side='left', padx=5, pady=5, expand=True, fill='x')
+        btn_zoom_keepout.pack(side='left', padx=5, pady=5, expand=True, fill='x')
 
         # ----------------- 群組5: Laser -----------------
         group5_frame = tk.Frame(self.master)
@@ -126,74 +133,86 @@ class CameraControlGUI:
 
     # ----------------- Common -------------------
     def on_netural(self):
+        print("[指令]: 一鍵回中")
         cm.Command.Netural_command()
-        print("指令: 一鍵回中 pressed")
 
     def on_down(self):
+        print("[指令]: 一鍵向下")
         cm.Command.Down_command()
-        print("指令: 一鍵向下 pressed")
-
+        
     def on_follow_header(self):
+        print("[指令]: 跟隨機頭")
         cm.Command.FollowHeader_command()
-        print("指令: 跟隨機頭 pressed")
-
+        
     # ----------------- Photo -------------------
     def on_take_photo(self):
+        print("[指令]: 拍一張照片")
         cm.Command.Photo_command(1, 0)
-        print("指令: 拍一張照片 pressed")
     
     def on_continuous_shooting(self):
+        print("[指令]: 拍三張照片")
         cm.Command.Photo_command(2, 3)
-        print("指令: 拍三張照片 pressed")
 
     # ----------------- Video -------------------
     def on_start_recording(self):
+        print("[指令]: 開始錄影")
         cm.Command.Video_command(1)
-        print("指令: 開始錄影 pressed")
-
+        
     def on_stop_recording(self):
+        print("[指令]: 結束錄影")
         cm.Command.Video_command(2)
-        print("指令: 結束錄影 pressed")
 
     # ------------------ Zoom -------------------
+    def on_zoom_keepin(self):
+        print("[指令]: 持續放大 [控制時間]: 0.25s")
+        cm.Command.MachineZoom_command(1)
+        time.sleep(0.25)
+        cm.Command.MachineZoom_command(3)
+    
+    def on_zoom_keepout(self):
+        print("[指令]: 持續縮小")
+        cm.Command.MachineZoom_command(2)
+        time.sleep(0.25)
+        cm.Command.MachineZoom_command(3)
+        
     def on_zoom_reset(self):
+        print("[指令]: 恢復1倍")
         cm.Command.MachineZoom_command(4)
-        print("指令: 恢復1倍 pressed")
-
+        
     def on_zoom_in(self):
+        print("[指令]: 放大2倍")
         cm.Command.MachineZoom_command(5)
-        print("指令: 放大2倍 pressed")
 
     def on_zoom_out(self):
+        print("[指令]: 縮小2倍")
         cm.Command.MachineZoom_command(6)
-        print("指令: 縮小2倍 pressed")
-
+        
     # ------------------ Laser ------------------
-    def on_laser_open(self):
-        cm.Command.Laser_command(1)
-        print("指令: 打開雷射 pressed")
-
     def on_laser_close(self):
-        cm.Command.Laser_command(2)
-        print("指令: 關閉雷射 pressed")
+        print("[指令]: 關閉雷射")
+        cm.Command.Laser_command(0)
+        
+    def on_laser_open(self):
+        print("[指令]: 打開雷射")
+        cm.Command.Laser_command(1)
 
     # ----------------- Direction -----------------
     def on_indicator_up(self):
-        cm.Command.Indicator_command(0, 500)
-        print("指令: 向上 pressed")
+        print("[指令]: 向上 [控制量]: 2.5度")
+        cm.Command.GimbalControl_command(0, 25)
 
     def on_indicator_down(self):
-        cm.Command.Indicator_command(0, -500)
-        print("指令: 向下 pressed")
+        print("[指令]: 向下 [控制量]: 2.5度")
+        cm.Command.GimbalControl_command(0, -25)
 
     def on_indicator_left(self):
-        cm.Command.Indicator_command(-500, 0)
-        print("指令: 向左 pressed")
+        print("[指令]: 向左 [控制量]: 2.5度")
+        cm.Command.GimbalControl_command(-25, 0)
 
     def on_indicator_right(self):
-        cm.Command.Indicator_command(500, 0)
-        print("指令: 向右 pressed")
-
+        print("[指令]: 向右 [控制量]: 2.5度")
+        cm.Command.GimbalControl_command(25, 0)
+        
 # ------------------ 主要執行序 -------------------
 def main():
     root = tk.Tk()

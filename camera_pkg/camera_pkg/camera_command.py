@@ -2,33 +2,28 @@
 # -*- coding: utf-8 -*-
 
 '''
-
 File   : camera_command.py
-
 author : LYX(先驅), FantasyWilly
 email  : FantasyWilly - bc697522h04@gmail.com
-
-'''
-
-'''
 
 相機型號 : KTG-TT30
 檔案大綱 : 控制命令
     1. 固定格式
     2. 命令程式控制
-
 '''
-import time
-import socket_communication as s_comm
+import camera_pkg.socket_communication as communication
 
 # ------------------------------------- 固定程式 --------------------------------------------- 
 
-# FIXED_BYTES : KTG-TT30 的雲台控制前面固定指令
-FIXED_BYTES = (b'\x4B\x4B\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x88')
+# FIXED_BYTES   : KTG-TT30 雲台控制前面固定頭幀
+FIXED_BYTES     = (b'\x4B\x4B\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x88')
+
+# REC_CMD       : KTG-TT30 雲台回傳空命令
+REC_CMD         = (b'\x4B\x4B\x01\x97')
 
 # 定義光源控制位元：可見光與熱成像
-VISIBLE_LIGHT = b'\x01'   # 可見光
-THERMAL_IMAGING = b'\x02' # 熱成像
+VISIBLE_LIGHT   = b'\x01'       # 可見光
+THERMAL_IMAGING = b'\x02'       # 熱成像
 
 # 補齊字元  
 class Pad:
@@ -52,7 +47,15 @@ class CrcTmp:
 # 命令控制
 class Command:
 
-    # 指點變焦(控制上下左右) - CMD(0x01)
+    # 回傳空命令 (回傳)
+    def REC_command():
+        send_bytes = bytearray(REC_CMD)
+
+        communication.send_command(send_bytes)    
+
+        return send_bytes
+
+    # 指點變焦 (移動 & 放大2倍) - CMD(0x01)
     def Indicator_command(x_offset, y_offset):
         """
             參數:
@@ -76,7 +79,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)
+        communication.send_command(send_bytes)
         
         return send_bytes
 
@@ -92,7 +95,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)    
+        communication.send_command(send_bytes)    
 
         return send_bytes
 
@@ -108,7 +111,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)       
+        communication.send_command(send_bytes)       
 
         return send_bytes
     
@@ -126,7 +129,6 @@ class Command:
         send_bytes = send_bytes + b'\x04'
 
         yaw_speed_bytes = int(yaw_speed * 100).to_bytes(2, byteorder='little', signed=True)
-
         pitch_speed_bytes = int(pitch_speed * 100).to_bytes(2, byteorder='little', signed=True)
 
         send_bytes += yaw_speed_bytes
@@ -137,7 +139,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)
+        communication.send_command(send_bytes)
         
         return send_bytes
     
@@ -175,7 +177,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)
+        communication.send_command(send_bytes)
         
         return send_bytes
     
@@ -191,7 +193,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)       
+        communication.send_command(send_bytes)       
 
         return send_bytes
     
@@ -207,7 +209,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)       
+        communication.send_command(send_bytes)       
 
         return send_bytes
     
@@ -235,7 +237,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)       
+        communication.send_command(send_bytes)       
 
         return send_bytes
     
@@ -259,7 +261,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)       
+        communication.send_command(send_bytes)       
 
         return send_bytes
     
@@ -288,12 +290,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)
+        communication.send_command(send_bytes)
         
         return send_bytes
     
     # 機芯聚焦 - CMD(0x13)
-    def MachineFocus_command(focus_code):
+    def MachineFocucomand(focus_code):
         """
             focus_code (int), 代表以下意義:
                 (1) => 聚焦增加
@@ -315,12 +317,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)
+        communication.send_command(send_bytes)
         
         return send_bytes
     
     # 指點聚焦 - CMD(0x14)
-    def PointFocus_command(center_x, center_y):
+    def PointFocucomand(center_x, center_y):
         """
             參數:
                 center_x: int, 框中心點橫座標 [0 ~ 8191]
@@ -348,7 +350,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)
+        communication.send_command(send_bytes)
         
         return send_bytes
 
@@ -357,7 +359,7 @@ class Command:
         """
             open_or_close (int), 代表以下意義:
                 (1) => 開起雷射
-                (2) => 關閉雷射
+                (0) => 關閉雷射
         """
 
         send_bytes = bytearray(FIXED_BYTES)
@@ -372,7 +374,7 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        s_comm.send_command(send_bytes)       
+        communication.send_command(send_bytes)       
 
         return send_bytes
     
@@ -380,7 +382,7 @@ class Command:
     
 def main():
     # Command.Netural_command()
-    Command.GimbalControl_command(20,0)
+    Command.GimbalControl_command(-50,0)
 
 if __name__ == "__main__":
     main()
