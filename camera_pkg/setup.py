@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'camera_feedback_publisher_node = camera_pkg.camera_feedback_ros2:main',
+            'camera_feedback_publisher_gui_node = camera_pkg.camera_gui_ros2:main',
             'target_position_node = camera_pkg.camera_laser_dist:main',
             'vio_target_position_node = camera_pkg.camera_vio_laser_dist:main'
         ],

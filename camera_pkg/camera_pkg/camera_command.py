@@ -11,19 +11,17 @@ email  : FantasyWilly - bc697522h04@gmail.com
     1. 固定格式
     2. 命令程式控制
 '''
-import camera_pkg.socket_communication as communication
+
+from camera_pkg.camera_communication import CommunicationController
 
 # ------------------------------------- 固定程式 --------------------------------------------- 
 
 # FIXED_BYTES   : KTG-TT30 雲台控制前面固定頭幀
 FIXED_BYTES     = (b'\x4B\x4B\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x88')
 
-# REC_CMD       : KTG-TT30 雲台回傳空命令
-REC_CMD         = (b'\x4B\x4B\x01\x97')
-
 # 定義光源控制位元：可見光與熱成像
-VISIBLE_LIGHT   = b'\x01'       # 可見光
-THERMAL_IMAGING = b'\x02'       # 熱成像
+VISIBLE_LIGHT   = (b'\x01')       # 可見光
+THERMAL_IMAGING = (b'\x02')       # 熱成像
 
 # 補齊字元  
 class Pad:
@@ -47,16 +45,8 @@ class CrcTmp:
 # 命令控制
 class Command:
 
-    # 回傳空命令 (回傳)
-    def REC_command():
-        send_bytes = bytearray(REC_CMD)
-
-        communication.send_command(send_bytes)    
-
-        return send_bytes
-
     # 指點變焦 (移動 & 放大2倍) - CMD(0x01)
-    def Indicator_command(x_offset, y_offset):
+    def Indicator_command(controller: CommunicationController, x_offset, y_offset):
         """
             參數:
                 x_offset: int, 偏離圖像中心的橫向距離 [-10000, 10000]
@@ -79,12 +69,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)
+        controller.send_command(send_bytes)
         
         return send_bytes
 
     # 跟隨機頭 - CMD(0x02)
-    def FollowHeader_command():
+    def FollowHeader_command(controller: CommunicationController):
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
@@ -95,12 +85,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)    
+        controller.send_command(send_bytes)    
 
         return send_bytes
 
     # 回中 - CMD(0x03)
-    def Netural_command():
+    def Netural_command(controller: CommunicationController):
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
@@ -111,12 +101,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)       
+        controller.send_command(send_bytes)       
 
         return send_bytes
     
     # 雲台控制 - CMD(0x04)
-    def GimbalControl_command(yaw_speed, pitch_speed):
+    def GimbalControl_command(controller: CommunicationController, yaw_speed, pitch_speed):
         """
             參數:
                 yaw_speed:   int, deg/s * 100 (範圍 -10000 ~ +10000)
@@ -139,12 +129,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)
+        controller.send_command(send_bytes)
         
         return send_bytes
     
     # 開始跟蹤 - CMD(0x05)
-    def StartTracking_command(center_x, center_y, length_x, width_y):
+    def StartTracking_command(controller: CommunicationController, center_x, center_y, length_x, width_y):
         """
             參數:
                 center_x: int, 框中心點橫座標 [0 ~ 8191]
@@ -177,12 +167,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)
+        controller.send_command(send_bytes)
         
         return send_bytes
     
     # 停止跟蹤 - CMD(0x06)
-    def StopTracking_command():
+    def StopTracking_command(controller: CommunicationController):
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
@@ -193,12 +183,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)       
+        controller.send_command(send_bytes)       
 
         return send_bytes
     
     # 向下 - CMD(0x07)
-    def Down_command():
+    def Down_command(controller: CommunicationController):
         send_bytes = bytearray(FIXED_BYTES)
         send_bytes = send_bytes + VISIBLE_LIGHT
         
@@ -209,12 +199,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)       
+        controller.send_command(send_bytes)       
 
         return send_bytes
     
     # 拍照 - CMD(0x010)
-    def Photo_command(photo_mode, parameters):
+    def Photo_command(controller: CommunicationController, photo_mode, parameters):
         """
             photo_mode, parameters (int), 代表以下意義:
                 (1) => 拍一張照 + (0)
@@ -237,12 +227,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)       
+        controller.send_command(send_bytes)       
 
         return send_bytes
     
     # 錄影 - CMD(0x011)
-    def Video_command(start_or_stop):
+    def Video_command(controller: CommunicationController, start_or_stop):
         """
             start_or_stop (int) 代表以下意義:
                 (1) => 開始錄影
@@ -261,12 +251,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)       
+        controller.send_command(send_bytes)       
 
         return send_bytes
     
     # 機芯變焦 - CMD(0x12)
-    def MachineZoom_command(zoom_code):
+    def MachineZoom_command(controller: CommunicationController, zoom_code):
         """
             zoom_code (int) 代表以下意義:
                 (1) => 持續放大
@@ -290,12 +280,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)
+        controller.send_command(send_bytes)
         
         return send_bytes
     
     # 機芯聚焦 - CMD(0x13)
-    def MachineFocucomand(focus_code):
+    def MachineFocucomand(controller: CommunicationController, focus_code):
         """
             focus_code (int), 代表以下意義:
                 (1) => 聚焦增加
@@ -317,12 +307,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)
+        controller.send_command(send_bytes)
         
         return send_bytes
     
     # 指點聚焦 - CMD(0x14)
-    def PointFocucomand(center_x, center_y):
+    def PointFocucomand(controller: CommunicationController, center_x, center_y):
         """
             參數:
                 center_x: int, 框中心點橫座標 [0 ~ 8191]
@@ -350,12 +340,12 @@ class Command:
         crc = CrcTmp.calc(send_bytes)
         send_bytes += crc.to_bytes(2, 'little')
 
-        communication.send_command(send_bytes)
+        controller.send_command(send_bytes)
         
         return send_bytes
 
     # 雷射測距開關 - CMD(0x21)
-    def Laser_command(open_or_close):
+    def Laser_command(controller: CommunicationController, open_or_close):
         """
             open_or_close (int), 代表以下意義:
                 (1) => 開起雷射
@@ -372,17 +362,9 @@ class Command:
         send_bytes = Pad.pad_to_8_bytes(send_bytes)
 
         crc = CrcTmp.calc(send_bytes)
-        send_bytes += crc.to_bytes(2, 'little')
+        send_bytes += crc.to_bytes(2, 'little')  
 
-        communication.send_command(send_bytes)       
+        controller.send_command(send_bytes)     
 
         return send_bytes
     
-# -------------------- 主要執行序(調適用) ----------------------------
-    
-def main():
-    # Command.Netural_command()
-    Command.GimbalControl_command(-50,0)
-
-if __name__ == "__main__":
-    main()

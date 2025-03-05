@@ -19,7 +19,6 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from camera_msg_pkg.msg import Camera
 from sensor_msgs.msg import NavSatFix
-from std_msgs.msg import Float64
 from geometry_msgs.msg import PoseStamped
 
 # ----------------------- 基本參數設定 -----------------------
@@ -92,9 +91,9 @@ class TargetPositionNode(Node):
         self.uav_heading = self.initial_heading
 
         # 用來儲存從 /mavros/local_position/pose 得到的局部位置（單位：公尺）
-        self.local_x = 0.0
-        self.local_y = 0.0
-        self.local_z = 0.0
+        self.local_x = None
+        self.local_y = None
+        self.local_z = None
 
         # Publisher 用來發布計算後的目標物經緯度 (NavSatFix)
         self.target_pub = self.create_publisher(
@@ -136,9 +135,9 @@ class TargetPositionNode(Node):
         pitch_angle = camera_data.pitchangle          # 雲台的 pitch 角度（度）
         gimbal_yaw = camera_data.yawangle             # 雲台的 yaw 角度（度）
         
-        # 檢查是否已接收到 UAV - uav_lat, uav_lon, rel_alt, Heading
-        if self.uav_lat is None or self.uav_lon is None  is None:
-            self.get_logger().warning('等待 UAV 的初始資料...')
+        # 檢查是否已接收到 UAV - VIO系統
+        if self.local_x is None or self.local_y is None or self.local_z is None:
+            self.get_logger().warning('等待 VIO 傳回資料[x,y,z]...')
             return
         
         # 計算 目標物 - 水平分量
