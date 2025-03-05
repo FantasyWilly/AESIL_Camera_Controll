@@ -73,7 +73,7 @@ class CommunicationController:
         # 建立資料緩衝區
         buffer = bytearray()  
         while True:
-            data = sock.recv(1024)
+            data = sock.recv(256)
             if not data:
                 break
             buffer.extend(data)

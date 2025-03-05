@@ -266,14 +266,20 @@ class AppManager:
                 data_msg.rollangle = float(self.gimbal_msg.rollAngle)
                 data_msg.yawangle = float(self.gimbal_msg.yawAngle)
                 data_msg.pitchangle = float(self.gimbal_msg.pitchAngle)
-                data_msg.targetdist = float(self.gimbal_msg.targetDist)
+                
+                target_distance = float(self.gimbal_msg.targetDist)
+                if target_distance > 1500:
+                    print("超出範圍 (超過 1500) 的資料，忽略:", target_distance)
+                    continue  # 若在 for 迴圈中使用，直接跳過這次迭代
+                data_msg.targetdist = target_distance
+
                 camera_msg = Camera()
                 camera_msg.data = [data_msg]
                 self.ros_node.publisher_.publish(camera_msg)
-                self.ros_node.get_logger().info(
-                    f"[發布] Camera 資料: [ROLL]={data_msg.rollangle}, [YAW]={data_msg.yawangle}, "
-                    f"[PITCH]={data_msg.pitchangle}, [TARGET-DIST]={data_msg.targetdist}"
-                )
+                # self.ros_node.get_logger().info(
+                #     f"[發布] Camera 資料: [ROLL]={data_msg.rollangle}, [YAW]={data_msg.yawangle}, "
+                #     f"[PITCH]={data_msg.pitchangle}, [TARGET-DIST]={data_msg.targetdist}"
+                # )
             else:
                 print("無法解析資料")
             if self.stop_event.is_set():
