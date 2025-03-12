@@ -21,12 +21,11 @@ from camera_msg_pkg.msg import Camera
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import PoseStamped
 
-# ----------------------- 基本參數設定 -----------------------
+# ---------- 基本參數(全域參數) ----------
 
-# 定義地球半徑（單位：公尺）
-Earth_radius = 6371000.0
+Earth_radius = 6371000.0    # 定義地球半徑（單位：公尺）
 
-# ---------------------- 目標物計算公式 ----------------------
+# ---------- (gps_callback) 訂閱ROS2 GPS的相關訊息 ----------
 def destination_point(lat, lon, bearing, distance):
     
     # 地球半徑
@@ -50,12 +49,15 @@ class TargetPositionNode(Node):
         super().__init__('vio_target_position_node')
 
         # 宣告初始全域座標與初始航向，可從參數設定或直接指定
-        self.declare_parameter('initial_lat', 25.0339647)                    # 初始緯度
-        self.declare_parameter('initial_lon', 121.5644688)                   # 初始經度
-        self.declare_parameter('initial_heading', 0)                         # 初始航向 (度)
-        self.initial_lat = self.get_parameter('initial_lat').value
-        self.initial_lon = self.get_parameter('initial_lon').value
-        self.initial_heading = self.get_parameter('initial_heading').value
+        self.declare_parameter('initial_lat', 23.4507301)                                           # 初始緯度
+        self.declare_parameter('initial_lon', 120.2861433)                                          # 初始經度
+        self.declare_parameter('initial_heading', 0)                                                # 初始航向 (度)
+        self.declare_parameter('vio_pose_topic', '/mavros/vision_pose/pose')                        # vio_pose_topic
+         
+        self.initial_lat = self.get_parameter('initial_lat').get_parameter_value().double_value
+        self.initial_lon = self.get_parameter('initial_lon').get_parameter_value().double_value
+        self.initial_heading = self.get_parameter('initial_heading').get_parameter_value().integer_value
+        self.vio_pose_topic = self.get_parameter('vio_pose_topic').get_parameter_value().string_value
 
         # QoS 設定
         qos = QoSProfile(
@@ -74,16 +76,9 @@ class TargetPositionNode(Node):
         # 訂閱 UAV - Position [接收] - UAV 局部座標 (x, y, z)
         self.create_subscription(
             PoseStamped,
-            '/mavros/vision_pose/pose',
+            self.vio_pose_topic,
             self.pose_callback,
             qos_profile=qos)
-
-        # 訂閱 UAV - Heading  [接收] - UAV 轉向角
-        # self.create_subscription(
-        #     Float64,
-        #     '/mavros/global_position/compass_hdg',
-        #     self.heading_callback,
-        #     qos_profile=qos)
 
         # UAV 的全域經緯度 - 定義初始值
         self.uav_lat = self.initial_lat
@@ -117,11 +112,6 @@ class TargetPositionNode(Node):
         
         self.get_logger().info(f'[Pose] 局部 x: {self.local_x:.2f}, y: {self.local_y:.2f}, z: {self.local_z:.2f}')
         self.get_logger().info(f'[GPS計算] 當前緯度: {self.uav_lat:.7f}, 當前經度: {self.uav_lon:.7f}')
-
-    # Heading
-    # def heading_callback(self, msg: Float64):
-    #     self.uav_heading = msg.data
-    #     self.get_logger().info(f'[Heading] 當前航向: {self.uav_heading} 度')
 
     # ------------------------ 計算目標物 經緯度函數 ---------------------------------
     def camera_callback(self, msg: Camera):

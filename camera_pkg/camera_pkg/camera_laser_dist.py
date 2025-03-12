@@ -79,13 +79,6 @@ class TargetPositionNode(Node):
             self.gps_callback,
             qos_profile=qos)
         
-        # 訂閱 UAV - rel_alt        [接收] - 相對高度
-        self.create_subscription(
-            Float64,
-            '/mavros/global_position/rel_alt',
-            self.rel_alt_callback,
-            qos_profile=qos)
-        
         # 訂閱 UAV - Heading        [接收] - 飛機航向
         self.create_subscription(
             Float64,
@@ -110,11 +103,7 @@ class TargetPositionNode(Node):
         self.uav_lat = msg.latitude
         self.uav_lon = msg.longitude
         # self.get_logger().info(f'[GPS] lat: {self.uav_lat}, lon: {self.uav_lon}')
-    
-    # rel_alt
-    def rel_alt_callback(self, msg: Float64):
-        self.uav_rel_alt = msg.data
-        # self.get_logger().info(f'[相對高度] {abs(self.uav_rel_alt):.2f} 公尺')
+
     
     # Heading
     def heading_callback(self, msg: Float64):
