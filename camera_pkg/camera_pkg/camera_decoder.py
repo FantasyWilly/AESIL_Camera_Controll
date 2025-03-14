@@ -7,7 +7,7 @@ author : FantasyWilly
 email  : bc697522h04@gmail.com
 
 檔案大綱 : 
-    解析回傳資料
+    A. 解析回傳資料
 """
 
 import numpy as np

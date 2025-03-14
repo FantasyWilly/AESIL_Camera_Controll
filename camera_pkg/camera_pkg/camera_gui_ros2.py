@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 File   : camera_gui_ros2.py
 Author : LYX(先驅), FantasyWilly
@@ -311,9 +312,9 @@ class BackgroundManager:
             if self.stop_event.is_set():
                 break
             time.sleep(0.05)
-
+    
+    # ---------- (shutdown) 通知所有背景線程停止並等待結束, 再關閉連線與 ROS2 ---------- 
     def shutdown(self):
-        # 通知所有背景線程停止並等待結束，再關閉連線與 ROS2
         self.stop_event.set()
         for t in self.threads:
             t.join()

@@ -12,6 +12,7 @@ email  : FantasyWilly - bc697522h04@gmail.com
     2. 命令程式控制
 '''
 
+# ROS2
 from camera_pkg.camera_communication import CommunicationController
 
 # ------------------------------------- 固定程式 --------------------------------------------- 
