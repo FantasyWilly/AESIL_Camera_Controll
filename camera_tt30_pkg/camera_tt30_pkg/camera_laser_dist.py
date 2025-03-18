@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 '''
 File   : camera_laser_dist.py
@@ -7,25 +8,27 @@ email  : bc697522h04@gmail.com
 
 相機型號 : KTG-TT30
 檔案大綱 :
-    1. 接收 - 相機＆雲台回傳資料
-    2. 接收 - [GPS] 定位(lat, lon)
-    2. 計算 - 目標物經緯度
-    3. 發布 - 目標物經緯度資訊至ROS2
+    A. 接收 - 相機＆雲台回傳資料
+    B. 接收 - [GPS] 定位(lat, lon)
+    C. 計算 - 目標物經緯度
+    D. 發布 - 目標物經緯度資訊至ROS2
 '''
 
+# Python
 import math
+
+# ROS2
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import Float64
+from sensor_msgs.msg import NavSatFix
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
+# ROS2 自定義消息包
 from camera_msg_pkg.msg import Camera
-from sensor_msgs.msg import NavSatFix
-from std_msgs.msg import Float64
 
-# ----------------------- 基本參數設定 -----------------------
-
-# 定義地球半徑（單位：公尺）
-Earth_radius = 6371000.0
+# ---------- 基本參數 (全域) ----------
+Earth_radius = 6371000.0    # 定義地球半徑（單位：公尺）
 
 # ---------------------- 目標物計算公式 ----------------------
 def destination_point(lat, lon, bearing, distance):

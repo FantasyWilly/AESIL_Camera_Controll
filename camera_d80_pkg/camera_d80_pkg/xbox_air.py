@@ -8,8 +8,8 @@ Email  : bc697522h04@gmail.com
 
 相機型號 : D-80 Pro
 檔案大綱 : 
-    1. 在 Orin Nano 上啟動一個 TCP 代理服務, 監聽地面端連線
-    2. 每次接收到命令時, 直接利用 controller 持久連線 轉發命令給相機
+    A. 在 Orin Nano 上啟動一個 TCP 代理服務, 監聽地面端連線
+    B. 每次接收到命令時, 直接利用 controller 持久連線 轉發命令給相機
 """
 
 # Python

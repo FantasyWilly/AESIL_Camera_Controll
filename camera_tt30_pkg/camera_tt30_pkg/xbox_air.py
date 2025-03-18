@@ -6,7 +6,9 @@ Author : LYX(先驅), FantasyWilly
 Email  : FantasyWilly - bc697522h04@gmail.com
 
 相機型號 : KTG-TT30
-檔案大綱 : 創建簡單 GUI 界面, 用於發送相機控制指令, 同時接收相機回傳資料發布至 ROS2
+檔案大綱 : 
+    A. 在 Orin Nano 上啟動一個 TCP 代理服務, 監聽地面端連線
+    B. 每次接收到命令時, 直接利用 controller 持久連線 轉發命令給相機
 """
 
 # Python
@@ -18,11 +20,13 @@ import socketserver
 import rclpy
 from rclpy.node import Node
 
-# ROS2 自定義
-import camera_pkg.camera_loop_command as loop_cm
-from camera_pkg.camera_communication import CommunicationController
-from camera_pkg.camera_decoder import ReceiveMsg
+# ROS2 自定義消息包
 from camera_msg_pkg.msg import Camera, CameraData
+
+# ROS2 引用 Python 檔 (mine)
+import camera_tt30_pkg.camera_loop_command as loop_cm
+from camera_tt30_pkg.camera_communication import CommunicationController
+from camera_tt30_pkg.camera_decoder import ReceiveMsg
 
 # ---------- 基本參數(全域參數) ----------
 CAMERA_IP = "192.168.144.200"       # 相機控制 IP
@@ -37,6 +41,8 @@ gimbal_msg = ReceiveMsg()
 
 # ----------------------- [CameraFeedbackPublisher] 初始化 ROS2 Node 與發布者 -----------------------
 class CameraFeedbackPublisher(Node):
+    # Node       : xbox_air_node
+    # Topic(PUB) : /camera_data_pub
     def __init__(self):
         super().__init__('xbox_air_node')
         self.declare_parameter('gimbal_step', 50)
@@ -94,8 +100,8 @@ class BackgroundManager:
         self.threads.append(self.ros_publish_thread)
         print("[背景線程] 開始接收並發布相機資料到 ROS2")
 
+    # -------------------- (receive_and_publish) 接收相機 並 發布至 ROS2 --------------------
     def receive_and_publish(self):
-        # 持續接收相機回傳封包，解析後發布至 ROS2
         for packet in CommunicationController.recv_packets(self.controller.sock, packet_size=32, header=b'\x4B\x4B'):
             if self.stop_event.is_set():
                 break
@@ -173,8 +179,7 @@ def start_proxy_server(host: str, port: int) -> ThreadedTCPServer:
 
 # ----------------------- [main] 主要執行序 -----------------------
 def main():
-    global controller  # 確保使用全域 controller
-    global ros2_publisher
+    global controller
 
     try:
         background_manager = BackgroundManager()

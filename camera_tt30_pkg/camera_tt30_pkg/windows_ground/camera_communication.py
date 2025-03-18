@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-File   : socket_communication.py
+File   : camera_communication.py
 author : FantasyWilly
 email  : bc697522h04@gmail.com
 
@@ -73,7 +73,7 @@ class CommunicationController:
     @staticmethod
     def recv_packets(sock, packet_size=32, header=b'\x4B\x4B'):
         """
-        - 說明 *(recv_packets)*
+        - 說明 (recv_packets)
             從 socket 中接收資料並提取完整封包
 
         Args:

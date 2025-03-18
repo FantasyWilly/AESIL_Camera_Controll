@@ -1,9 +1,21 @@
-# camera_loop_command.py
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+'''
+File   : camera_loop_command.py
+author : FantasyWilly
+email  : bc697522h04@gmail.com
+
+相機型號 : KTG-TT30
+檔案大綱 :
+    A. 持續發送 回傳命令
+'''
+
 import time
 import threading
 
-from camera_pkg.camera_communication import CommunicationController
-from camera_pkg.camera_decoder import ReceiveMsg
+from camera_tt30_pkg.camera_communication import CommunicationController
+from camera_tt30_pkg.camera_decoder import ReceiveMsg
 
 gimbal_msg=ReceiveMsg()
 

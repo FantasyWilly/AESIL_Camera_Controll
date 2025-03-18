@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 '''
 File   : camera_vio_laser_dist.py
@@ -7,22 +8,26 @@ email  : bc697522h04@gmail.com
 
 相機型號 : KTG-TT30
 檔案大綱 :
-    1. 接收 - 相機＆雲台回傳資料
-    2. 接收 - [vio] 相機定位 (x,y,z)
-    2. 計算 - 目標物經緯度
-    3. 發布 - 目標物經緯度資訊至ROS2
+    A. 接收 - 相機＆雲台回傳資料
+    B. 接收 - [vio] 相機定位 (x,y,z)
+    C. 計算 - 目標物經緯度
+    D. 發布 - 目標物經緯度資訊至ROS2
 '''
 
+# Python
 import math
+
+# ROS2
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from camera_msg_pkg.msg import Camera
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import PoseStamped
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+
+# ROS2 自訂義消息包
+from camera_msg_pkg.msg import Camera
 
 # ---------- 基本參數(全域參數) ----------
-
 Earth_radius = 6371000.0    # 定義地球半徑（單位：公尺）
 
 # ---------- (gps_callback) 訂閱ROS2 GPS的相關訊息 ----------

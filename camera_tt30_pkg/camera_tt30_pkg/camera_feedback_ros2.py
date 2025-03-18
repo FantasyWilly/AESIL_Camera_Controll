@@ -1,31 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 '''
 File   : camera_feedback_ros2.py
 author : LYX(先驅), FantasyWilly
 email  : FantasyWilly - bc697522h04@gmail.com
 
-說明  : 接收雲台資訊並發布至 ROS2
-         透過 communication 模組處理相機資料解析與封包接收
+檔案大綱 : 
+    A. 接收 - 相機＆雲台回傳
+    B. 打開 - 雷射測距
+    C. 持續傳送回傳指令以取得數據
+    D. 發布資訊至 ROS2
 '''
 
+# Python
 import time
 import threading
 
+# ROS2
 import rclpy
 from rclpy.node import Node
+
+# ROS2 自定義消息包
 from camera_msg_pkg.msg import Camera, CameraData
 
-import camera_pkg.camera_command as cm
-import camera_pkg.camera_loop_command  as loop_cm
-from camera_pkg.camera_communication import CommunicationController
-from camera_pkg.camera_decoder import ReceiveMsg
+# ROS2 引用 Python 檔 (mine)
+import camera_tt30_pkg.camera_command as cm
+import camera_tt30_pkg.camera_loop_command  as loop_cm
+from camera_tt30_pkg.camera_communication import CommunicationController
+from camera_tt30_pkg.camera_decoder import ReceiveMsg
 
+# ----------------------- [CameraFeedbackPublisher] ROS2 - [Node] & [TOPIC] -----------------------
 class CameraFeedbackPublisher(Node):
+    # Node       : camera_feedback_publisher_node
+    # Topic(PUB) : /camera_data_pub
     def __init__(self):
         super().__init__('camera_feedback_publisher_node')
         self.publisher_ = self.create_publisher(Camera, '/camera_data_pub', 10)
 
+# ----------------------- [main] 主要執行序 -----------------------
 def main():
 
     # 創建 CommunicationController[連線] & ReceiveMsg[解析]
@@ -38,18 +51,18 @@ def main():
 
     try:
         
-        # (1) 開始連線
+        # Step1 - 開始連線
         controller.connect()
 
-        # (2) 打開雷射測距
+        # Step2 - 打開雷射測距
         node.get_logger().info("[開啟]: 雷射測距 (等待 1 秒)")
         cm.Command.Laser_command(controller, 1)
         time.sleep(2)
         
-        # (3) 建立一個 stop_event 讓背景線程知道什麼時候要結束
+        # Step3 - 建立一個 stop_event 讓背景線程知道什麼時候要結束
         stop_event = threading.Event()
 
-        # (4) 開啟 Loop 線程
+        # Step4 - 開啟 Loop 線程
         loop_thread = threading.Thread(
             target=loop_cm.loop_in_background,
             args=(controller, stop_event),
@@ -58,7 +71,7 @@ def main():
         loop_thread.start()
         print("[開啟]: LOOP-CMD")
 
-        # (5) 接收相機數據 & 呼叫解碼器
+        # Step5 - 接收相機數據 & 呼叫解碼器
         for packet in CommunicationController.recv_packets(controller.sock, packet_size=32, header=b'\x4B\x4B'):
             if gimbal_msg.parse(packet, len(packet), gimbal_msg):
                 data_msg = CameraData()
