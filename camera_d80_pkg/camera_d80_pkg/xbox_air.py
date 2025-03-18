@@ -106,13 +106,16 @@ def start_proxy_server(host: str, port: int) -> ThreadedTCPServer:
 
 # -------------------- [main] 主要執行序 --------------------
 def main():
+
+    global controller
+
     # 初始化 ROS2 節點與發布者
     rclpy.init()
     ros2_publisher = GCUPublisher()
     ros2_thread = threading.Thread(target=rclpy.spin, args=(ros2_publisher,), daemon=True)
     ros2_thread.start()
 
-    print("[等待] : ROS2 節點打開...")
+    print("[等待]: ROS2 節點打開...")
     print("-----------------------")
     time.sleep(1)
 
@@ -128,7 +131,7 @@ def main():
         daemon=True
     )
     loop_thread.start()
-    print("[LOOP] : 開始不斷發送空命令...")
+    print("[LOOP]: 開始不斷發送空命令...")
     print("---------------------------")
     time.sleep(1)
 

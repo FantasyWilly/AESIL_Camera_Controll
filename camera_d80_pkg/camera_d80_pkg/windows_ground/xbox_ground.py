@@ -7,7 +7,7 @@ Email  : bc697522h04@gmail.com
 
 相機型號 : D-80 Pro
 檔案大綱 : 
-    1. 地面端透過 Xbox 控制器發送控制命令
+    A. 地面端透過 Xbox 控制器發送控制命令
 """
 
 # Python
