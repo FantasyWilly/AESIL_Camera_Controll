@@ -2,21 +2,17 @@
 # -*- coding: utf-8 -*-
 
 """
-TCP 代理服務示例
-================
-功能：
-  1. 在 Orin Nano 上與相機建立單一 TCP 連線。
-  2. 啟動一個 TCP 代理服務，監聽地面端連線（例如埠 9999）。
-  3. 收到地面端命令後，透過與相機連線轉發命令、取得回應後回傳給地面端。
-  4. 背景中持續發送空命令以讀取相機資料，並透過 ROS2 將資料發布出去。
+檔案   : xbox_air.py
+作者   : FantasyWilly
+Email  : bc697522h04@gmail.com
 
-注意：
-  - 此範例僅供參考，實際使用時可能需要進一步處理連線異常、資料同步與多重請求等問題。
-  - ROS2 部分假設你已有 GCUPublisher 節點用來發布資料。
+相機型號 : D-80 Pro
+檔案大綱 : 
+    1. 在 Orin Nano 上啟動一個 TCP 代理服務, 監聽地面端連線
+    2. 每次接收到命令時, 直接利用 controller 持久連線 轉發命令給相機
 """
 
 # Python
-import socket
 import threading
 import socketserver
 import time
@@ -24,111 +20,121 @@ import time
 # ROS2
 import rclpy
 from camera_d80_pkg.gcu_ros2_publisher import GCUPublisher
-from camera_d80_pkg.camera_protocol import build_packet, send_empty_command
-from camera_d80_pkg.camera_decoder import decode_gcu_response
+from camera_d80_pkg.guc_ros2_controller import GCUController
+import camera_d80_pkg.gcu_loop as gcu_loop
 
-# --- 設定參數 ---
-CAMERA_IP = "192.168.168.121"     # 相機 IP
-CAMERA_PORT = 2332                # 相機埠號
+# ---------- 基本參數(全域參數) ----------
+CAMERA_IP = "192.168.168.121"       # 相機 IP
+CAMERA_PORT = 2332                  # 相機埠號
 
-PROXY_LISTEN_IP = "0.0.0.0"         # 代理服務監聽所有介面
-PROXY_LISTEN_PORT = 9999            # 代理服務監聽埠號
+PROXY_LISTEN_IP = "192.168.0.230"   # 代理服務監聽的 IP
+PROXY_LISTEN_PORT = 9999            # 代理服務監聽的埠號
 
-# --- 全域變數：與相機的連線與鎖 ---
-camera_socket = None
-camera_lock = threading.Lock()
-
-# 全域 ROS2 發布者（後續會初始化）
 ros2_publisher = None
+controller = None
 
-def connect_to_camera():
-    """建立與相機的 TCP 連線"""
-    global camera_socket
-    camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    camera_socket.connect((CAMERA_IP, CAMERA_PORT))
-    print(f"已連接到相機：{CAMERA_IP}:{CAMERA_PORT}")
-
-def continuous_empty_command_loop():
+# ---------- (forward_command_to_camera) 發送命令至相機 ----------
+def forward_command_to_camera(command_data: bytes) -> bytes:
     """
-    背景執行緒：持續發送空命令讀取相機資料，
-    解碼後透過 ROS2 發布（假設封包與解碼依照你的專案實作）
+    - 說明 (forward_command_to_camera)
+        利用 controller 持久連線轉發命令
+        使用 controller.lock 保護，避免多執行緒同時存取
     """
-    global camera_socket, camera_lock, ros2_publisher
-    while True:
-        try:
-            with camera_lock:
-                # 組建空命令封包，根據你的協議規範
-                empty_packet = build_packet(command=0x00, parameters=b'', include_empty_command=True, enable_request=True)
-                camera_socket.sendall(empty_packet)
-                # 接收回應，假設回應不超過 1024 字節
-                response = camera_socket.recv(1024)
-            if response:
-                parsed = decode_gcu_response(response)
-                print(f"[代理] 空命令回應解碼：{parsed}")
-                # 若有 ROS2 發布者，發布資料（此處根據你的發布方法調整）
-                if ros2_publisher is not None:
-                    # 例如: ros2_publisher.publish_data(parsed['roll'], parsed['pitch'], parsed['yaw'])
-                    pass
-        except Exception as e:
-            print(f"[代理] 空命令循環錯誤: {e}")
-        time.sleep(1)  # 控制頻率
+    global controller
+    try:
+        with controller.lock:
 
-# --- TCP 代理服務部分 ---
+            # 發送命令
+            controller.sock.sendall(command_data)
+            # print(f"[代理] 已發送命令：{command_data.hex().upper()}")
+
+            # 接收命令
+            response = controller.sock.recv(1024)
+            # print(f"[代理] 從相機接收到回應：{response.hex().upper()}")
+
+            return response
+    except Exception as e:
+        print(f"[代理] forward_command_to_camera 發生錯誤：{e}")
+        return b''
+
+# -------------------- [ProxyHandler] 接收地面端命令 --------------------
 class ProxyHandler(socketserver.BaseRequestHandler):
     """
-    處理來自地面端的連線，
-    將接收到的命令透過 camera_socket 轉發給相機，
-    並將相機回應返回給地面端。
+    - 說明 [ProxyHandler]
+        1. 持續接收來自地面端的命令
+        2. 對每次接收的命令, 透過 controller 的連線轉發給相機, 並將相機回應傳回給地面端
     """
     def handle(self):
-        global camera_socket, camera_lock
         print(f"[代理] 接收到來自 {self.client_address} 的連線")
-        try:
-            data = self.request.recv(1024)
-            if not data:
-                return
-            print(f"[代理] 從地面端接收到命令：{data.hex().upper()}")
-            with camera_lock:
-                # 轉發命令到相機
-                camera_socket.sendall(data)
-                response = camera_socket.recv(1024)
-            print(f"[代理] 從相機接收到回應：{response.hex().upper()}")
-            self.request.sendall(response)
-        except Exception as e:
-            print(f"[代理] 處理連線錯誤：{e}")
+        while True:
+            try:
+                data = self.request.recv(1024)
+                if not data:
+                    print(f"[代理] 客戶端 {self.client_address} 已關閉連線")
+                    break
+                # print(f"[代理] 從地面端接收到命令：{data.hex().upper()}")
+                response = forward_command_to_camera(data)
+                if response:
+                    self.request.sendall(response)
+                    # print(f"[代理] 已將回應發送給地面端：{response.hex().upper()}")
+                else:
+                    print("[代理] 未獲得有效回應")
+            except Exception as e:
+                print(f"[代理] 處理連線錯誤：{e}")
+                break
 
+# -------------------- [ThreadedTCPServer] TCP代理 基礎設定 --------------------
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    """多執行緒 TCP 代理服務器"""
+    """
+    - 說明 [ThreadedTCPServer]
+        1. 繼承自 socketserver.ThreadingMixIn 與 socketserver.TCPServer
+        2. socketserver.TCPServer : 是 Python 內建的 TCP 伺服器類別, 提供基本的 TCP 連線功能
+        3. socketserver.ThreadingMixIn : 伺服器每收到一個連線請求就會啟動一個新的執行緒來處理, 可以同時處理多個客戶端連線
+        4. allow_reuse_address = True : 這個設定允許伺服器在關閉後可以立即重新綁定同一個 IP 與埠
+    """
     allow_reuse_address = True
 
-def start_proxy_server(host, port):
+# -------------------- (start_proxy_server) 啟動 TCP 代理 --------------------
+def start_proxy_server(host: str, port: int) -> ThreadedTCPServer:
     """啟動 TCP 代理服務器"""
     server = ThreadedTCPServer((host, port), ProxyHandler)
     server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.daemon = True  # 當主程式結束時，線程也自動關閉
+    server_thread.daemon = True
     server_thread.start()
     print(f"[代理] 代理服務器已啟動，監聽 {host}:{port}")
     return server
 
-# --- 主程式 ---
-if __name__ == '__main__':
+# -------------------- [main] 主要執行序 --------------------
+def main():
     # 初始化 ROS2 節點與發布者
     rclpy.init()
     ros2_publisher = GCUPublisher()
     ros2_thread = threading.Thread(target=rclpy.spin, args=(ros2_publisher,), daemon=True)
     ros2_thread.start()
 
-    # 先與相機建立連線
-    connect_to_camera()
+    print("[等待] : ROS2 節點打開...")
+    print("-----------------------")
+    time.sleep(1)
 
-    # 啟動背景執行緒，持續發送空命令並發布相機資料
-    empty_thread = threading.Thread(target=continuous_empty_command_loop, daemon=True)
-    empty_thread.start()
+    # 建立與相機的 TCP 連線
+    controller = GCUController(CAMERA_IP, CAMERA_PORT, ros2_publisher=ros2_publisher)
+    controller.connect()
 
-    # 啟動代理服務器，讓地面端連線到 Orin Nano（代理服務）
+    # 啟動背景線程, 不斷發送空命令
+    stop_event = threading.Event()
+    loop_thread = threading.Thread(
+        target=gcu_loop.loop_in_background,
+        args=(controller, stop_event),
+        daemon=True
+    )
+    loop_thread.start()
+    print("[LOOP] : 開始不斷發送空命令...")
+    print("---------------------------")
+    time.sleep(1)
+
+    # 啟動代理服務器
     proxy_server = start_proxy_server(PROXY_LISTEN_IP, PROXY_LISTEN_PORT)
 
-    # 主執行緒保持運行
     try:
         while True:
             time.sleep(1)
@@ -136,4 +142,8 @@ if __name__ == '__main__':
         print("關閉代理服務器與退出")
         proxy_server.shutdown()
         proxy_server.server_close()
+        stop_event.set()
         rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()

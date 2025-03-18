@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-檔案   : ground_controller.py
+檔案   : xbox_ground.py
 作者   : FantasyWilly
 Email  : bc697522h04@gmail.com
 
 相機型號 : D-80 Pro
 檔案大綱 : 
-    A. 地面端透過 Xbox 控制器發送控制命令
-    B. 使用原有封包格式（camera_command.py 與 camera_protocol.py）
-    C. 當按下搖桿上的按鈕 11 時結束程式
-    ※ 此程式不依賴 ROS，只負責透過 TCP 連線傳送命令與接收回應
+    1. 地面端透過 Xbox 控制器發送控制命令
 """
 
 # Python
@@ -18,26 +15,20 @@ import time
 import sys
 import pygame
 
-# ROS2
-import camera_d80_pkg.camera_command as cm
-from camera_d80_pkg.gcu_controller import GCUController
+# 引用自定義程式
+import camera_command as cm
+from gcu_controller import GCUController
 
 
 # ---------- 基本參數 (全域) ----------
-# 如果你是直連相機，請使用相機 IP 與埠號；如果是透過代理服務，請改為代理服務的 IP 與埠號
-DEVICE_IP = "192.168.0.230"     # 或改成代理服務所在的 IP
-DEVICE_PORT = 9999              # 或代理服務的埠號
+DEVICE_IP = "192.168.0.230"     # Server IP
+DEVICE_PORT = 9999              # Server Port 
 
-# 每次雲台調整的角度增量（單位：度）
-CONTROL_INCREMENT = 5.0
+CONTROL_INCREMENT = 5.0         # 雲台角度增量 (預設 5 度)
 
+# ---------- (xbox_controller_loop) 添加 xbox 循環事件 ----------
 def xbox_controller_loop(controller: GCUController) -> None:
-    """
-    使用 pygame 監聽 Xbox 控制器事件，
-    依據控制器操作呼叫對應的命令函式，
-    當按下按鈕 11 時結束程式。
-    (這個版本是單線程的，所有事件都在主線程中處理)
-    """
+
     pygame.init()
     pygame.joystick.init()
 
@@ -52,15 +43,13 @@ def xbox_controller_loop(controller: GCUController) -> None:
     # 進入事件循環
     while True:
         for event in pygame.event.get():
-            # 處理按鈕按下事件
             if event.type == pygame.JOYBUTTONDOWN:
-                # 若按下按鈕 11，結束程式
                 if event.button == 7:
-                    print("按下按鈕 7，程式將結束")
+                    print("按下按鈕 7, 程式將結束")
                     pygame.quit()
-                    return  # 直接返回結束事件循環
+                    return
 
-                # 依據其他按鈕發送命令
+                # 處理按鈕 (button) 事件, 用以控制 [自定義按鈕]
                 if joystick.get_button(0):
                     print("A 按鈕按下：向下")
                     cm.down(controller)
@@ -80,7 +69,7 @@ def xbox_controller_loop(controller: GCUController) -> None:
                     print("R 按鈕按下：跟隨")
                     cm.follow(controller)
 
-            # 處理方向鍵 (hat) 事件，用以控制雲台角度
+            # 處理方向鍵 (hat) 事件, 用以控制 [雲台角度]
             elif event.type == pygame.JOYHATMOTION:
                 hat = joystick.get_hat(0)
                 if hat != (0, 0):
@@ -89,9 +78,8 @@ def xbox_controller_loop(controller: GCUController) -> None:
                     print(f"Hat 更新：發送雲台控制指令 -> pitch: {pitch}°, yaw: {yaw}°")
                     cm.control_gimbal(controller, pitch=pitch, yaw=yaw)
             
-            # 處理觸發器 (axis) 事件，用以控制 zoom
+            # 處理觸發器 (axis) 事件，用以控制 [相機放大縮小]
             elif event.type == pygame.JOYAXISMOTION:
-                # 假設 RT 為軸 5；當值大於 0.5 表示按下，否則釋放
                 if event.axis == 5:
                     rt_value = joystick.get_axis(5)
                     if rt_value > 0.5:
@@ -100,7 +88,6 @@ def xbox_controller_loop(controller: GCUController) -> None:
                     else:
                         print("RT 釋放：停止放大縮小")
                         cm.zoom_stop(controller)
-                # 假設 LT 為軸 2；當值大於 0.5 表示按下，否則釋放
                 elif event.axis == 4:
                     lt_value = joystick.get_axis(4)
                     if lt_value > 0.5:
@@ -111,20 +98,16 @@ def xbox_controller_loop(controller: GCUController) -> None:
                         cm.zoom_stop(controller)
         time.sleep(0.1)
 
+# -------------------- [main] 主要執行序 --------------------
 def main() -> None:
-    """
-    主要流程：
-      1. 建立與相機（或代理服務）的 TCP 連線，建立 GCUController 實例
-      2. 呼叫 controller.connect() 連線
-      3. 進入 Xbox 控制器事件循環
-      4. 當事件循環結束（按下按鈕 11）後，斷開連線
-    """
+
+    # 連線 Server
     controller = GCUController(DEVICE_IP, DEVICE_PORT)
+
     try:
         controller.connect()
-        print("[連線] 嵌入式第腦")
+        print("[連線] 嵌入式電腦")
         
-        # 直接在主線程中進入事件循環
         xbox_controller_loop(controller)
         
     except Exception as e:
