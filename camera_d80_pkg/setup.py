@@ -24,7 +24,11 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'gcu_publisher_node = camera_d80_pkg.guc_ros2_main:main'
+            'gcu_ros2_main_node = camera_d80_pkg.guc_ros2_main:main',
+            'laser_node = camera_d80_pkg.LRFX00M1LSQ_laser:main',
+            'target_position_node = camera_d80_pkg.camera_laser_dist:main',
+            'vio_target_position_node = camera_d80_pkg.camera_vio_laser_dist:main',
+            'xbox_air_node = camera_d80_pkg.xbox_air:main'
         ],
     },
 )
