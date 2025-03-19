@@ -23,6 +23,7 @@ from rclpy.node import Node
 
 # ROS2 自定義消息包
 from camera_msg_pkg.msg import Camera, CameraData
+from camera_msg_pkg.msg import Laser, LaserData
 
 # ROS2 引用 Python 檔 (mine)
 import camera_tt30_pkg.camera_command as cm
@@ -34,9 +35,12 @@ from camera_tt30_pkg.camera_decoder import ReceiveMsg
 class CameraFeedbackPublisher(Node):
     # Node       : camera_feedback_publisher_node
     # Topic(PUB) : /camera_data_pub
+    # Topic(PUB) : /laser_data_pub
     def __init__(self):
         super().__init__('camera_feedback_publisher_node')
-        self.publisher_ = self.create_publisher(Camera, '/camera_data_pub', 10)
+        
+        self.publisher_camera = self.create_publisher(Camera, '/camera_data_pub', 10)
+        self.publisher_laser  = self.create_publisher(Laser, '/laser_data_pub', 10)
 
 # ----------------------- [main] 主要執行序 -----------------------
 def main():
@@ -73,21 +77,37 @@ def main():
 
         # Step5 - 接收相機數據 & 呼叫解碼器
         for packet in CommunicationController.recv_packets(controller.sock, packet_size=32, header=b'\x4B\x4B'):
+            if stop_event.is_set():
+                break
             if gimbal_msg.parse(packet, len(packet), gimbal_msg):
-                data_msg = CameraData()
-                data_msg.rollangle = float(gimbal_msg.rollAngle)
-                data_msg.yawangle = float(gimbal_msg.yawAngle)
-                data_msg.pitchangle = float(gimbal_msg.pitchAngle)
-                data_msg.targetdist = float(gimbal_msg.targetDist)
+                camera_data = CameraData()
+                camera_data.rollangle = float(gimbal_msg.rollAngle)
+                camera_data.yawangle = float(gimbal_msg.yawAngle)
+                camera_data.pitchangle = float(gimbal_msg.pitchAngle)
 
                 camera_msg = Camera()
-                camera_msg.data = [data_msg]
+                camera_msg.data = [camera_data]
+                node.publisher_camera.publish(camera_msg)
+                # node.get_logger().info(
+                #     f"[發布] Camera 資料: [ROLL]={camera_data.rollangle}, [YAW]={camera_data.yawangle}, [PITCH]={camera_data.pitchangle}"
+                # )
 
-                node.publisher_.publish(camera_msg)
-                node.get_logger().info(
-                    f"[發布] Camera 資料: [ROLL]={data_msg.rollangle}, [YAW]={data_msg.yawangle}, [PITCH]={data_msg.pitchangle}"
-                    f"[TARGET-DIST]={data_msg.targetdist}"
-                )
+                # -----------------------------------------------------------------------------------------
+
+                target_distance = float(gimbal_msg.targetDist)
+                if target_distance > 1500:
+                    # print("超出範圍 (超過 1500) 的資料，忽略:", target_distance)
+                    continue
+                laser_data = LaserData()
+                laser_data.targetdist = target_distance
+
+                laser_msg = Laser()
+                laser_msg.data = [laser_data]
+                node.publisher_laser.publish(laser_msg)
+                # node.get_logger().info(
+                #     f"[發布] Laser 資料: [TARGET-DIST]={laser_data.targetdist}"
+                # )
+
             else:
                 print("無法解析資料")
 

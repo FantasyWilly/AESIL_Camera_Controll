@@ -4,7 +4,7 @@
 '''
 File   : camera_vio_laser_dist.py
 author : FantasyWilly
-email  : bc697522h04@gmail.com
+email  : FantasyWilly@gmail.com
 
 相機型號 : KTG-TT30
 檔案大綱 :
@@ -14,26 +14,26 @@ email  : bc697522h04@gmail.com
     D. 發布 - 目標物經緯度資訊至ROS2
 '''
 
-# Python
+# 匯入必要的 Python 模組
 import math
 
-# ROS2
+# 匯入 ROS2 相關模組與訊息類型
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import PoseStamped
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
-# ROS2 自訂義消息包
+# 匯入自訂義消息包
 from camera_msg_pkg.msg import Camera
+from camera_msg_pkg.msg import Laser
 
-# ---------- 基本參數(全域參數) ----------
-Earth_radius = 6371000.0    # 定義地球半徑（單位：公尺）
+# 全域參數：定義地球半徑 (單位：公尺)
+Earth_radius = 6371000.0
 
-# ---------- (gps_callback) 訂閱ROS2 GPS的相關訊息 ----------
+# 定義根據起始經緯度、方位角與距離計算目標經緯度的函數
 def destination_point(lat, lon, bearing, distance):
-    
-    # 地球半徑
+    # R 為地球半徑
     R = Earth_radius
 
     # 將起始緯度、經度與方位角轉換成弧度
@@ -41,115 +41,157 @@ def destination_point(lat, lon, bearing, distance):
     lon_rad = math.radians(lon)
     bearing_rad = math.radians(bearing)
 
-    # 使用球面三角學公式
+    # 利用球面三角學公式計算目標位置的緯度與經度（以弧度表示）
     target_lat = math.asin(math.sin(lat_rad) * math.cos(distance / R) +
                            math.cos(lat_rad) * math.sin(distance / R) * math.cos(bearing_rad))
     target_lon = lon_rad + math.atan2(math.sin(bearing_rad) * math.sin(distance / R) * math.cos(lat_rad),
                                       math.cos(distance / R) - math.sin(lat_rad) * math.sin(target_lat))
 
+    # 將計算結果轉換成角度返回
     return math.degrees(target_lat), math.degrees(target_lon)
 
+# 定義 ROS2 節點
 class TargetPositionNode(Node):
     def __init__(self):
         super().__init__('vio_target_position_node')
 
-        # 宣告初始全域座標與初始航向，可從參數設定或直接指定
-        self.declare_parameter('initial_lat', 23.4507301)                                           # 初始緯度
-        self.declare_parameter('initial_lon', 120.2861433)                                          # 初始經度
-        self.declare_parameter('initial_heading', 0)                                                # 初始航向 (度)
-        self.declare_parameter('vio_pose_topic', '/mavros/vision_pose/pose')                        # vio_pose_topic
+        # 宣告並讀取初始全域座標與初始航向參數
+        self.declare_parameter('initial_lat', 23.4507301)           # 初始緯度
+        self.declare_parameter('initial_lon', 120.2861433)          # 初始經度
+        self.declare_parameter('initial_heading', 0)                # 初始航向 (度)
+        self.declare_parameter('vio_pose_topic', '/mavros/vision_pose/pose')  # VIO 定位話題名稱
          
         self.initial_lat = self.get_parameter('initial_lat').get_parameter_value().double_value
         self.initial_lon = self.get_parameter('initial_lon').get_parameter_value().double_value
         self.initial_heading = self.get_parameter('initial_heading').get_parameter_value().integer_value
         self.vio_pose_topic = self.get_parameter('vio_pose_topic').get_parameter_value().string_value
 
-        # QoS 設定
+        # 設定 QoS
         qos = QoSProfile(
             reliability=ReliabilityPolicy(0),  # BEST EFFORT 模式
             durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_ALL,
         )
 
-        # 訂閱 UAV - Camera   [接收] - 相機數據（包含雷射測距、雲台角度等）
+        # 訂閱相機數據（接收雲台的 roll、yaw、pitch 資料）
         self.create_subscription(
             Camera,
             '/camera_data_pub',
             self.camera_callback,
             qos_profile=qos)
+        
+        # 訂閱雷射數據（接收雷射測距距離，將不再從相機消息中取得）
+        self.create_subscription(
+            Laser,
+            '/laser_data_pub',
+            self.laser_callback,
+            qos_profile=qos)
 
-        # 訂閱 UAV - Position [接收] - UAV 局部座標 (x, y, z)
+        # 訂閱 VIO 系統傳回的 UAV 局部座標 (x, y, z)
         self.create_subscription(
             PoseStamped,
             self.vio_pose_topic,
             self.pose_callback,
             qos_profile=qos)
 
-        # UAV 的全域經緯度 - 定義初始值
+        # 初始全域經緯度與航向設定 (若無 VIO 資料則使用初始參數)
         self.uav_lat = self.initial_lat
         self.uav_lon = self.initial_lon
         self.uav_heading = self.initial_heading
 
-        # 用來儲存從 /mavros/local_position/pose 得到的局部位置（單位：公尺）
+        # 儲存從 VIO 得到的局部座標 (單位：公尺)
         self.local_x = None
         self.local_y = None
         self.local_z = None
 
-        # Publisher 用來發布計算後的目標物經緯度 (NavSatFix)
+        # 建立 Publisher 以發布目標物經緯度 (NavSatFix)
         self.target_pub = self.create_publisher(
             NavSatFix,
             '/target_position',
             qos_profile=qos)
-
-    # pose
-    def pose_callback(self, msg: PoseStamped):
-        self.local_x = msg.pose.position.x  # 局部 x 值 (代表東向)
-        self.local_y = msg.pose.position.y  # 局部 y 值 (代表北向)
-        self.local_z = msg.pose.position.z  # 局部 z 值 (代表向上)
         
-        # 計算 移動多少 經緯度
+        # 用來儲存最新的相機資料 (主要用於取得雲台的 pitch 與 yaw)
+        self.last_camera_data = None
+        # 儲存最新的雷射測距距離
+        self.laser_distance = None
+
+    # 接收 VIO 定位資料的回調函數
+    def pose_callback(self, msg: PoseStamped):
+        # 從訊息中取得局部座標
+        self.local_x = msg.pose.position.x  # 局部 x (代表東向)
+        self.local_y = msg.pose.position.y  # 局部 y (代表北向)
+        self.local_z = msg.pose.position.z  # 局部 z (代表向上)
+        
+        # 利用局部座標計算緯度與經度的位移量
         delta_lat = (self.local_y / Earth_radius) * (180 / math.pi)
         delta_lon = (self.local_x / (Earth_radius * math.cos(math.radians(self.initial_lat)))) * (180 / math.pi)
 
-        # 計算 當前經緯度
+        # 更新 UAV 當前全域經緯度
         self.uav_lat = self.initial_lat + delta_lat
         self.uav_lon = self.initial_lon + delta_lon
         
         self.get_logger().info(f'[Pose] 局部 x: {self.local_x:.2f}, y: {self.local_y:.2f}, z: {self.local_z:.2f}')
         self.get_logger().info(f'[GPS計算] 當前緯度: {self.uav_lat:.7f}, 當前經度: {self.uav_lon:.7f}')
 
-    # ------------------------ 計算目標物 經緯度函數 ---------------------------------
+    # 接收相機（雲台）數據的回調函數，僅接收 roll、yaw、pitch
     def camera_callback(self, msg: Camera):
         if not msg.data:
             self.get_logger().warning('沒有接收到雲台數據！')
             return
         
-        # 取出最新一筆雲台數據
+        # 取出最新一筆雲台數據，並儲存供後續計算使用
         camera_data = msg.data[0]
-        target_distance = camera_data.targetdist      # 雷射測距距離（公尺）
-        pitch_angle = camera_data.pitchangle          # 雲台的 pitch 角度（度）
-        gimbal_yaw = camera_data.yawangle             # 雲台的 yaw 角度（度）
+        self.camera_roll = camera_data.rollangle      # 更新相機的 roll 值
+        self.camera_yaw = camera_data.yawangle        # 更新相機的 yaw 值
+        self.camera_pitch = camera_data.pitchangle    # 更新相機的 pitch 值
         
-        # 檢查是否已接收到 UAV - VIO系統
+        # 如果雷射數據已經存在，則利用最新的雲台與雷射數據進行目標位置計算
+        if self.laser_distance is not None:
+            self.update_target_position_with_laser()
+
+    # 接收雷射測距數據的回調函數
+    def laser_callback(self, msg: Laser):
+        if not msg.data:
+            self.get_logger().warning('沒有接收到雷射數據！')
+            return
+        
+        # 取出最新一筆雷射數據，更新雷射測距距離
+        laser_data = msg.data[0]
+        self.laser_distance = laser_data.targetdist
+        
+        # 利用最新的雷射數據進行目標位置計算
+        self.update_target_position_with_laser()
+
+    # 利用最新的 VIO、雲台與雷射數據計算目標物經緯度
+    def update_target_position_with_laser(self):
+        # 檢查是否已收到 VIO 定位資料
         if self.local_x is None or self.local_y is None or self.local_z is None:
             self.get_logger().warning('等待 VIO 傳回資料[x,y,z]...')
             return
         
-        # 計算 目標物 - 水平分量
-        pitch_rad = math.radians(pitch_angle)
-        horizontal_distance = target_distance * math.cos(pitch_rad)
+        # 檢查是否已收到雷射數據
+        if self.laser_distance is None:
+            self.get_logger().warning('等待雷射數據...')
+            return
         
-        # 計算 目標物 - 絕對方位角
-        gimbal_yaw_adjusted = (gimbal_yaw + 360) % 360
+        # 檢查是否已收到雲台數據
+        if self.camera_pitch is None or self.camera_yaw is None:
+            self.get_logger().warning('等待雲台數據...')
+            return
+        
+        # 計算水平距離：利用雷射測距距離與雲台 pitch 角 (以弧度計算)
+        pitch_rad = math.radians(self.camera_pitch)
+        horizontal_distance = self.laser_distance * math.cos(pitch_rad)
+        
+        # 計算絕對方位角：結合 UAV 航向與調整後的雲台 yaw
+        gimbal_yaw_adjusted = (self.camera_yaw + 360) % 360
         total_bearing = (self.uav_heading + gimbal_yaw_adjusted) % 360
         
-        # self.get_logger().info(f'[計算] 水平距離: {horizontal_distance:.2f} 公尺, 絕對方位角: {total_bearing:.2f} 度')
-        
-        # 利用起始計算得到的 UAV 當前全域經緯度與目標物的水平距離、方位角，計算目標物經緯度
+        # 利用當前 UAV 全域經緯度、總方位角與水平距離計算目標物經緯度
         target_lat, target_lon = destination_point(self.uav_lat, self.uav_lon, total_bearing, horizontal_distance)
-        self.get_logger().info(f'[結果] 目標緯度: {target_lat:.7f}, 目標經度: {target_lon:.7f}')
+        self.get_logger().info(f'[雷射計算] 目標緯度: {target_lat:.7f}, 目標經度: {target_lon:.7f}')
         
-        # 建立 NavSatFix 訊息並發布目標物經緯度
+        # 建立 NavSatFix 訊息並發布目標物經緯度資訊
         target_msg = NavSatFix()
         target_msg.latitude = round(target_lat, 7)
         target_msg.longitude = round(target_lon, 7)

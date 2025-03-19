@@ -11,9 +11,11 @@ email  : bc697522h04@gmail.com
     A. 持續發送 回傳命令
 '''
 
+# Python
 import time
 import threading
 
+# ROS2 引用 Python 檔 (mine)
 from camera_tt30_pkg.camera_communication import CommunicationController
 from camera_tt30_pkg.camera_decoder import ReceiveMsg
 

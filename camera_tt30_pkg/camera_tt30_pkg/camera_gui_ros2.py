@@ -16,16 +16,19 @@ import time
 import threading
 import tkinter as tk
 
+# ROS2
+import rclpy
+from rclpy.node import Node
+
+# ROS2 自定義消息包
+from camera_msg_pkg.msg import Camera, CameraData
+from camera_msg_pkg.msg import Laser, LaserData
+
 # ROS2 引用 Python 檔 (mine)
 import camera_tt30_pkg.camera_command as cm
 import camera_tt30_pkg.camera_loop_command as loop_cm
 from camera_tt30_pkg.camera_communication import CommunicationController
 from camera_tt30_pkg.camera_decoder import ReceiveMsg
-
-# ----------------- ROS2 節點定義 -----------------
-import rclpy
-from rclpy.node import Node
-from camera_msg_pkg.msg import Camera, CameraData
 
 controller = CommunicationController("192.168.144.200", 2000)
 gimbal_msg = ReceiveMsg()
@@ -34,8 +37,7 @@ gimbal_msg = ReceiveMsg()
 class CameraFeedbackPublisher(Node):
     # Node       : camera_feedback_publisher_gui_node
     # Topic(PUB) : /camera_data_pub
-    # A.[宣告] 可動參數 
-    # B.[定義] 相機資訊話題
+    # Topic(PUB) : /laser_data_pub
     def __init__(self):
         super().__init__('camera_feedback_publisher_gui_node')
 
@@ -47,7 +49,8 @@ class CameraFeedbackPublisher(Node):
         self.zoom_duration = self.get_parameter('zoom_duration').get_parameter_value().double_value
         self.photo_continous_count = self.get_parameter('photo_continous_count').get_parameter_value().integer_value
 
-        self.publisher_ = self.create_publisher(Camera, '/camera_data_pub', 10)
+        self.publisher_camera = self.create_publisher(Camera, '/camera_data_pub', 10)
+        self.publisher_laser  = self.create_publisher(Laser, '/laser_data_pub', 10)
 
 # ----------------------- [CameraControlGUI] 接收 [Node] 節點, 創建 [GUI] 界面 -----------------------
 class CameraControlGUI:
@@ -292,24 +295,34 @@ class BackgroundManager:
             if self.stop_event.is_set():
                 break
             if self.gimbal_msg.parse(packet, len(packet), self.gimbal_msg):
-                data_msg = CameraData()
-                data_msg.rollangle = float(self.gimbal_msg.rollAngle)
-                data_msg.yawangle = float(self.gimbal_msg.yawAngle)
-                data_msg.pitchangle = float(self.gimbal_msg.pitchAngle)
-                
+                camera_data = CameraData()
+                camera_data.rollangle = float(self.gimbal_msg.rollAngle)
+                camera_data.yawangle = float(self.gimbal_msg.yawAngle)
+                camera_data.pitchangle = float(self.gimbal_msg.pitchAngle)
+
+                camera_msg = Camera()
+                camera_msg.data = [camera_data]
+                self.ros_node.publisher_camera.publish(camera_msg)
+                # self.ros_node.get_logger().info(
+                #     f"[發布] Camera 資料: [ROLL]={camera_data.rollangle}, [YAW]={camera_data.yawangle}, [PITCH]={camera_data.pitchangle}"
+                # )
+
+                # -----------------------------------------------------------------------------------------
+
                 target_distance = float(self.gimbal_msg.targetDist)
                 if target_distance > 1500:
                     # print("超出範圍 (超過 1500) 的資料，忽略:", target_distance)
                     continue
-                data_msg.targetdist = target_distance
+                laser_data = LaserData()
+                laser_data.targetdist = target_distance
 
-                camera_msg = Camera()
-                camera_msg.data = [data_msg]
-                self.ros_node.publisher_.publish(camera_msg)
+                laser_msg = Laser()
+                laser_msg.data = [laser_data]
+                self.ros_node.publisher_laser.publish(laser_msg)
                 # self.ros_node.get_logger().info(
-                #     f"[發布] Camera 資料: [ROLL]={data_msg.rollangle}, [YAW]={data_msg.yawangle}, "
-                #     f"[PITCH]={data_msg.pitchangle}, [TARGET-DIST]={data_msg.targetdist}"
+                #     f"[發布] Laser 資料: [TARGET-DIST]={laser_data.targetdist}"
                 # )
+
             else:
                 print("無法解析資料")
             if self.stop_event.is_set():

@@ -22,6 +22,7 @@ from rclpy.node import Node
 
 # ROS2 自定義消息包
 from camera_msg_pkg.msg import Camera, CameraData
+from camera_msg_pkg.msg import Laser, LaserData
 
 # ROS2 引用 Python 檔 (mine)
 import camera_tt30_pkg.camera_loop_command as loop_cm
@@ -32,7 +33,7 @@ from camera_tt30_pkg.camera_decoder import ReceiveMsg
 CAMERA_IP = "192.168.144.200"       # 相機控制 IP
 CAMERA_PORT = 2000                  # 相機控制 Port
 
-PROXY_LISTEN_IP = "192.168.0.230"   # 代理服務監聽的 IP
+PROXY_LISTEN_IP = "0.0.0.0"   # 代理服務監聽的 IP
 PROXY_LISTEN_PORT = 9999            # 代理服務監聽的埠號
 
 # 建立全域的 controller 與解析器物件
@@ -43,6 +44,7 @@ gimbal_msg = ReceiveMsg()
 class CameraFeedbackPublisher(Node):
     # Node       : xbox_air_node
     # Topic(PUB) : /camera_data_pub
+    # Topic(PUB) : /laser_data_pub
     def __init__(self):
         super().__init__('xbox_air_node')
         self.declare_parameter('gimbal_step', 50)
@@ -53,7 +55,8 @@ class CameraFeedbackPublisher(Node):
         self.zoom_duration = self.get_parameter('zoom_duration').get_parameter_value().double_value
         self.photo_continous_count = self.get_parameter('photo_continous_count').get_parameter_value().integer_value
 
-        self.publisher_ = self.create_publisher(Camera, '/camera_data_pub', 10)
+        self.publisher_camera = self.create_publisher(Camera, '/camera_data_pub', 10)
+        self.publisher_laser  = self.create_publisher(Laser, '/laser_data_pub', 10)
 
 # ----------------------- [BackgroundManager] 背景線程管理 -----------------------
 class BackgroundManager:
@@ -106,19 +109,34 @@ class BackgroundManager:
             if self.stop_event.is_set():
                 break
             if self.gimbal_msg.parse(packet, len(packet), self.gimbal_msg):
-                data_msg = CameraData()
-                data_msg.rollangle = float(self.gimbal_msg.rollAngle)
-                data_msg.yawangle = float(self.gimbal_msg.yawAngle)
-                data_msg.pitchangle = float(self.gimbal_msg.pitchAngle)
-                
-                target_distance = float(self.gimbal_msg.targetDist)
-                if target_distance > 1500:
-                    continue
-                data_msg.targetdist = target_distance
+                camera_data = CameraData()
+                camera_data.rollangle = float(self.gimbal_msg.rollAngle)
+                camera_data.yawangle = float(self.gimbal_msg.yawAngle)
+                camera_data.pitchangle = float(self.gimbal_msg.pitchAngle)
 
                 camera_msg = Camera()
-                camera_msg.data = [data_msg]
-                self.ros_node.publisher_.publish(camera_msg)
+                camera_msg.data = [camera_data]
+                self.ros_node.publisher_camera.publish(camera_msg)
+                # self.ros_node.get_logger().info(
+                #     f"[發布] Camera 資料: [ROLL]={camera_data.rollangle}, [YAW]={camera_data.yawangle}, [PITCH]={camera_data.pitchangle}"
+                # )
+
+                # -----------------------------------------------------------------------------------------
+
+                target_distance = float(self.gimbal_msg.targetDist)
+                if target_distance > 1500:
+                    # print("超出範圍 (超過 1500) 的資料，忽略:", target_distance)
+                    continue
+                laser_data = LaserData()
+                laser_data.targetdist = target_distance
+
+                laser_msg = Laser()
+                laser_msg.data = [laser_data]
+                self.ros_node.publisher_laser.publish(laser_msg)
+                # self.ros_node.get_logger().info(
+                #     f"[發布] Laser 資料: [TARGET-DIST]={laser_data.targetdist}"
+                # )
+
             else:
                 print("無法解析資料")
             if self.stop_event.is_set():
@@ -158,7 +176,7 @@ class ProxyHandler(socketserver.BaseRequestHandler):
                 response = forward_command_to_camera(data)
                 if response:
                     self.request.sendall(response)
-                    print(f"[代理] 已將回應發送給地面端：{response.hex().upper()}")
+                    # print(f"[代理] 已將回應發送給地面端：{response.hex().upper()}")
                 else:
                     print("[代理] 未獲得有效回應")
             except Exception as e:
