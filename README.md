@@ -41,25 +41,25 @@ source ~/.bashrc
 
   **ROS2 Running**
 
-    ```bash
-    ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
-    ```
+  ```bash
+  ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
+  ```
 
   **ROS2 Launch**
 
-    ```bash
-    ros2 launch camera_tt30_pkg camera_gui_ros2_launch.py
-    ```
+  ```bash
+  ros2 launch camera_tt30_pkg camera_gui_ros2_launch.py
+  ```
 
   **Config**
 
-    ```yaml
-    camera_feedback_publisher_gui_node:
-    ros__parameters:
-        gimbal_step: 50
-        zoom_duration: 0.3
-        photo_continous_count: 3
-    ```
+  ```yaml
+  camera_feedback_publisher_gui_node:
+  ros__parameters:
+      gimbal_step: 50
+      zoom_duration: 0.3
+      photo_continous_count: 3
+  ```
 
 </details>
 
