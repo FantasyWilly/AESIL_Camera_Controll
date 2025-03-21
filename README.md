@@ -31,7 +31,7 @@ source ~/.bashrc
   ros2 run camera_d80_pkg guc_ro2_main_node
   ```
 
-    ---
+  ---
 
 </details>
 
@@ -45,6 +45,11 @@ source ~/.bashrc
   ```bash
   ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
   ```
+  -Node
+    camera_feedback_publisher_gui_node
+  -Topic
+    /camera_data_pub
+    /laser_data_pub
 
   ---
 
