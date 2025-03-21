@@ -45,7 +45,7 @@ source ~/.bashrc
   ```bash
   ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
   ```
-  - **Node**
+  - `Node`
     camera_feedback_publisher_gui_node
   - **Topic**
     /camera_data_pub
