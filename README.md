@@ -45,6 +45,8 @@ source ~/.bashrc
   ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
   ```
 
+  ---
+
   **ROS2 Launch**
 
   ```bash
@@ -56,9 +58,9 @@ source ~/.bashrc
   ```yaml
   camera_feedback_publisher_gui_node:
   ros__parameters:
-      gimbal_step: 50
-      zoom_duration: 0.3
-      photo_continous_count: 3
+      gimbal_step: 50                   # 雲台移動度數 (gimbal_step/10)
+      zoom_duration: 0.3                # 持續放大縮小時間 (s)
+      photo_continous_count: 3          # 連續拍照次數
   ```
 
 </details>
