@@ -39,18 +39,17 @@ source ~/.bashrc
 
   ### <div align="center">KTG-TT30</div>
 
-  ROS2 Running
-
+  **ROS2 Running**
     ```
     ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
     ```
 
-  ROS2 Launch
+  **ROS2 Launch**
     ```
     ros2 launch camera_tt30_pkg camera_gui_ros2_launch.py
     ```
 
-  Config
+  **Config**
     ```
     camera_feedback_publisher_gui_node:
     ros__parameters:
