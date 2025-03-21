@@ -4,14 +4,15 @@
 
 ### *Step1* 下載至 ROS2 的工作空間
 
-```
+```bash
 cd ~/<your_workspace>/src
 git clone https://github.com/FantasyWilly/AESIL_Camera.git
 ```
 
 ---
+
 ### *Step2* 編譯工作空間
-```
+```bash
 colon build
 source ~/.bashrc
 ```
@@ -24,11 +25,11 @@ source ~/.bashrc
 
   ### <div align="center">D-80 Pro</div>
 
-  - Example
+  **ROS2 Running**
 
-    ```
-    ros2 run camera_d80_pkg guc_ro2_main_node
-    ```
+  ```bash
+  ros2 run camera_d80_pkg guc_ro2_main_node
+  ```
 
     ---
 
