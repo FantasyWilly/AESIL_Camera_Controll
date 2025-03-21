@@ -17,14 +17,14 @@ source ~/.bashrc
 ```
 ---
 
-## <div align="center">Introduce</div>
+## <div align="center">Introduce & Use</div>
 
 <details>
   <summary>D-80 系列</summary>
 
-  ### <div align="center">camera_d80_pkg</div>
+  ### <div align="center">D-80 Pro</div>
 
-  - 程式碼啟用範例
+  - Example
 
     ```
     ros2 run camera_d80_pkg guc_ro2_main_node
@@ -32,8 +32,20 @@ source ~/.bashrc
 
     ---
 
-  - 詳細說明
-  - 表格或圖片
+</details>
+
+<details>
+  <summary>KTG 系列</summary>
+
+  ### <div align="center">KTG-TT30</div>
+
+  - Example
+
+    ```
+    ros2 run camera_tt30_pkg camera_feedback_publisher_gui_node
+    ```
+
+    ---
 
 </details>
 
