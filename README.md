@@ -22,12 +22,12 @@ source ~/.bashrc
 <details>
   <summary>D-80 系列</summary>
 
-  功能包 : camera_d80_pkg
+  ### <div align="center">camera_d80_pkg</div>
 
   - 程式碼啟用範例
 
     ```
-    ros2 run guc_ro2_main_node
+    ros2 run camera_d80_pkg guc_ro2_main_node
     ```
 
     ---
