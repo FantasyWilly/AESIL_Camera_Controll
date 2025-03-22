@@ -92,6 +92,7 @@ source ~/.bashrc
 
     ```bash
     python3 camera_tt30_pkg/camera_tt30_pkg/windows_ground/xbox_ground.py
+    ros2 run camera_d80_pkg guc_ro2_main_node
     ```
 
     ---
