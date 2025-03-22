@@ -41,7 +41,7 @@ source ~/.bashrc
 
   ### [ KTG 系列 ] - (TT30)
 
-  > **★ 三種發方式開啟程式 ( Optional )**
+  > **★ 三種方式開啟程式 ( Optional )**
 
   - **ROS2 Running - (Optional)**
 
